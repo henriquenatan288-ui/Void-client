@@ -38,8 +38,10 @@ public class BlockESP extends Module {
             new BooleanSetting("Tracers", "Draw particle trails from you to blocks", true));
 
     private final List<BlockPos> found = new ArrayList<>();
+    private final List<BlockPos> scanResults = new ArrayList<>();
     private int scanCursor;
     private int scanRange = -1;
+    private String scanSelection = "";
     private BlockPos scanOrigin;
     private int visualTicker;
 
@@ -53,22 +55,26 @@ public class BlockESP extends Module {
         ClientPlayerEntity player = mc.player;
         if (player == null || mc.world == null) {
             found.clear();
+            scanResults.clear();
             scanCursor = 0;
             scanOrigin = null;
             return;
         }
 
         int r = range.getInt();
-        if (r != scanRange) {
+        String selected = blocks.get();
+        if (r != scanRange || !selected.equals(scanSelection)) {
             scanRange = r;
+            scanSelection = selected;
             scanCursor = 0;
             scanOrigin = null;
+            scanResults.clear();
         }
 
         int side = r * 2 + 1;
         int total = side * side * side;
         if (scanCursor == 0) {
-            found.clear();
+            scanResults.clear();
             scanOrigin = player.getBlockPos().toImmutable();
         }
 
@@ -84,11 +90,14 @@ public class BlockESP extends Module {
 
             BlockPos pos = scanOrigin.add(x, y, z);
             Block block = mc.world.getBlockState(pos).getBlock();
-            if (matches(block) && found.size() < MAX_STORED_BLOCKS) {
-                found.add(pos.toImmutable());
+            if (matches(block) && scanResults.size() < MAX_STORED_BLOCKS) {
+                scanResults.add(pos.toImmutable());
             }
         }
         if (scanCursor >= total) {
+            found.clear();
+            found.addAll(scanResults);
+            scanResults.clear();
             scanCursor = 0;
             scanOrigin = null;
         }
@@ -122,7 +131,6 @@ public class BlockESP extends Module {
             double maxY = pos.getY() + 0.96;
             double maxZ = pos.getZ() + 0.96;
 
-            // Refresh all eight corners frequently enough to look like a block marker.
             addParticle(mc, dust, minX, minY, minZ);
             addParticle(mc, dust, minX, minY, maxZ);
             addParticle(mc, dust, minX, maxY, minZ);
