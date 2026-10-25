@@ -13,7 +13,6 @@ import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.option.KeyBinding;
-import net.minecraft.client.util.InputUtil;
 import net.minecraft.util.Identifier;
 import org.lwjgl.glfw.GLFW;
 import org.slf4j.Logger;
@@ -43,14 +42,13 @@ public class VoidClient implements ClientModInitializer {
         CONFIG_MANAGER = new ConfigManager(MODULE_MANAGER);
         CONFIG_MANAGER.load();
 
-        // ── KeyBinding oficial (Yarn 1.21.11) ─────────────────────────────
-        KeyBinding.Category category = KeyBinding.Category.register(
+        // Yarn 1.21.11: Category.create(Identifier), KeyBinding(id, code, category)
+        KeyBinding.Category category = KeyBinding.Category.create(
                 Identifier.of(MOD_ID, "main")
         );
 
         OPEN_GUI_KEY = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.voidclient.clickgui",
-                InputUtil.Type.KEYSYM,
                 GLFW.GLFW_KEY_RIGHT_SHIFT,
                 category
         ));
