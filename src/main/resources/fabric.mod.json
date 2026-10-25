@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "id": "voidclient",
+  "version": "${version}",
+  "name": "Void Client",
+  "description": "Dark neon utility client for Minecraft Java Edition",
+  "authors": [
+    "Bisteck"
+  ],
+  "contact": {
+    "sources": "https://github.com/henriquenatan288-ui/Void-client"
+  },
+  "license": "MIT",
+  "icon": "assets/voidclient/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "dev.voidclient.VoidClient"
+    ]
+  },
+  "mixins": [
+    "voidclient.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.18.0",
+    "minecraft": "~1.21.11",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}

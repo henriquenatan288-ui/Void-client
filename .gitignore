@@ -1,0 +1,37 @@
+# gradle
+.gradle/
+build/
+out/
+classes/
+libs/
+bin/
+run/
+logs/
+crash-reports/
+*.log
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.project
+.classpath
+.settings/
+.vscode/
+*.swp
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Fabric
+.fabric/
+
+# Misc
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+*.class
+hs_err_pid*
+replay_pid*
