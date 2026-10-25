@@ -6,8 +6,7 @@ import net.minecraft.client.MinecraftClient;
 import org.lwjgl.glfw.GLFW;
 
 /**
- * Module that opens the ClickGUI.
- * Default keybind: Right Shift.
+ * Opens the ClickGUI. Default key: Right Shift.
  */
 public class ClickGuiModule extends Module {
 

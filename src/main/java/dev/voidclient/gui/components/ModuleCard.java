@@ -7,15 +7,16 @@ import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 
 /**
- * Single module card (name + description + toggle).
+ * Compact module row / card.
  */
 public class ModuleCard {
 
-    public static final int WIDTH = 160;
-    public static final int HEIGHT = 52;
+    public static final int WIDTH = 168;
+    public static final int HEIGHT = 36;
 
     private final Module module;
     private int x, y;
+    private float hoverAnim;
 
     public ModuleCard(Module module) {
         this.module = module;
@@ -33,48 +34,49 @@ public class ModuleCard {
     public int getX() { return x; }
     public int getY() { return y; }
 
-    public void render(DrawContext ctx, TextRenderer tr, int mouseX, int mouseY) {
-        boolean hovered = RenderUtils.isHovered(mouseX, mouseY, x, y, WIDTH, HEIGHT);
-        int bg = hovered ? Theme.BG_CARD_HOVER : Theme.BG_CARD;
+    public void update(int mouseX, int mouseY, float delta) {
+        boolean h = RenderUtils.hovered(mouseX, mouseY, x, y, WIDTH, HEIGHT);
+        float speed = 10f * delta;
+        if (h) hoverAnim = Math.min(1f, hoverAnim + speed);
+        else hoverAnim = Math.max(0f, hoverAnim - speed);
+    }
 
-        RenderUtils.fillRounded(ctx, x, y, WIDTH, HEIGHT, 6, bg);
+    public void render(DrawContext ctx, TextRenderer tr, int mouseX, int mouseY) {
+        int bg = RenderUtils.lerpColor(Theme.BG_CARD, Theme.BG_CARD_HOVER, hoverAnim);
+        RenderUtils.fillRounded(ctx, x, y, WIDTH, HEIGHT, 5, bg);
+
         if (module.isEnabled()) {
             RenderUtils.outline(ctx, x, y, WIDTH, HEIGHT, Theme.ACCENT_DIM);
+            RenderUtils.fill(ctx, x, y + 4, 2, HEIGHT - 8, Theme.ACCENT);
         } else {
             RenderUtils.outline(ctx, x, y, WIDTH, HEIGHT, Theme.BORDER);
         }
 
-        RenderUtils.drawText(ctx, tr, module.getName(), x + 10, y + 10, Theme.TEXT_PRIMARY, false);
+        RenderUtils.drawText(ctx, tr, module.getName(), x + 10, y + 7, Theme.TEXT_PRIMARY, false);
 
         String desc = module.getDescription();
-        if (desc.length() > 22) desc = desc.substring(0, 20) + "..";
-        RenderUtils.drawText(ctx, tr, desc, x + 10, y + 24, Theme.TEXT_SECONDARY, false);
+        if (desc.length() > 24) desc = desc.substring(0, 22) + "..";
+        RenderUtils.drawText(ctx, tr, desc, x + 10, y + 20, Theme.TEXT_MUTED, false);
 
-        int tx = x + WIDTH - 36;
-        int ty = y + 18;
-        drawToggle(ctx, tx, ty, module.isEnabled());
+        drawToggle(ctx, x + WIDTH - 34, y + 11, module.isEnabled());
     }
 
-    private void drawToggle(DrawContext ctx, int x, int y, boolean on) {
-        int w = 26;
-        int h = 14;
-        int color = on ? Theme.TOGGLE_ON : Theme.TOGGLE_OFF;
-        RenderUtils.fillRounded(ctx, x, y, w, h, 7, color);
-        int knobX = on ? x + w - 12 : x + 2;
-        RenderUtils.fillRounded(ctx, knobX, y + 2, 10, 10, 5, Theme.TOGGLE_KNOB);
+    private void drawToggle(DrawContext ctx, int tx, int ty, boolean on) {
+        int w = 22;
+        int h = 12;
+        int track = on ? Theme.TOGGLE_ON : Theme.TOGGLE_OFF;
+        RenderUtils.fillRounded(ctx, tx, ty, w, h, 6, track);
+        int knob = on ? Theme.TOGGLE_KNOB_ON : Theme.TOGGLE_KNOB_OFF;
+        int kx = on ? tx + w - 11 : tx + 2;
+        RenderUtils.fillRounded(ctx, kx, ty + 2, 8, 8, 4, knob);
     }
 
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (!RenderUtils.isHovered((int) mouseX, (int) mouseY, x, y, WIDTH, HEIGHT)) {
-            return false;
-        }
+        if (!RenderUtils.hovered((int) mouseX, (int) mouseY, x, y, WIDTH, HEIGHT)) return false;
         if (button == 0) {
             module.toggle();
             return true;
         }
-        if (button == 1) {
-            return true;
-        }
-        return false;
+        return button == 1;
     }
 }

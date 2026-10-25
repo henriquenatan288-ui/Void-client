@@ -4,48 +4,67 @@ import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 
 /**
- * Simple drawing helpers on top of DrawContext.
- * Rounded look is approximated with multiple fills (no custom shader).
+ * Drawing helpers. Rounded rects approximated with stepped fills.
  */
 public final class RenderUtils {
 
     private RenderUtils() {}
 
     public static void fill(DrawContext ctx, int x, int y, int w, int h, int color) {
+        if (w <= 0 || h <= 0) return;
         ctx.fill(x, y, x + w, y + h, color);
     }
 
     public static void outline(DrawContext ctx, int x, int y, int w, int h, int color) {
-        ctx.fill(x, y, x + w, y + 1, color);
-        ctx.fill(x, y + h - 1, x + w, y + h, color);
-        ctx.fill(x, y, x + 1, y + h, color);
-        ctx.fill(x + w - 1, y, x + w, y + h, color);
+        if (w <= 0 || h <= 0) return;
+        fill(ctx, x, y, w, 1, color);
+        fill(ctx, x, y + h - 1, w, 1, color);
+        fill(ctx, x, y, 1, h, color);
+        fill(ctx, x + w - 1, y, 1, h, color);
     }
 
-    public static void fillRounded(DrawContext ctx, int x, int y, int w, int h, int radius, int color) {
-        if (radius <= 0 || w < radius * 2 || h < radius * 2) {
+    public static void fillRounded(DrawContext ctx, int x, int y, int w, int h, int r, int color) {
+        if (w <= 0 || h <= 0) return;
+        if (r <= 0 || w < r * 2 || h < r * 2) {
             fill(ctx, x, y, w, h, color);
             return;
         }
-        fill(ctx, x + radius, y, w - radius * 2, h, color);
-        fill(ctx, x, y + radius, radius, h - radius * 2, color);
-        fill(ctx, x + w - radius, y + radius, radius, h - radius * 2, color);
-        fill(ctx, x + 1, y + 1, radius - 1, radius - 1, color);
-        fill(ctx, x + w - radius, y + 1, radius - 1, radius - 1, color);
-        fill(ctx, x + 1, y + h - radius, radius - 1, radius - 1, color);
-        fill(ctx, x + w - radius, y + h - radius, radius - 1, radius - 1, color);
+        fill(ctx, x + r, y, w - 2 * r, h, color);
+        fill(ctx, x, y + r, r, h - 2 * r, color);
+        fill(ctx, x + w - r, y + r, r, h - 2 * r, color);
+        for (int i = 0; i < r; i++) {
+            int t = r - i;
+            fill(ctx, x + i, y + t - 1, 1, r - t + 1, color);
+            fill(ctx, x + w - i - 1, y + t - 1, 1, r - t + 1, color);
+            fill(ctx, x + i, y + h - r, 1, r - t + 1, color);
+            fill(ctx, x + w - i - 1, y + h - r, 1, r - t + 1, color);
+        }
     }
 
     public static void drawText(DrawContext ctx, TextRenderer tr, String text, int x, int y, int color, boolean shadow) {
         ctx.drawText(tr, text, x, y, color, shadow);
     }
 
-    public static void drawCenteredText(DrawContext ctx, TextRenderer tr, String text, int centerX, int y, int color, boolean shadow) {
-        int w = tr.getWidth(text);
-        ctx.drawText(tr, text, centerX - w / 2, y, color, shadow);
+    public static int textWidth(TextRenderer tr, String text) {
+        return tr.getWidth(text);
     }
 
-    public static boolean isHovered(int mouseX, int mouseY, int x, int y, int w, int h) {
-        return mouseX >= x && mouseX <= x + w && mouseY >= y && mouseY <= y + h;
+    public static boolean hovered(int mx, int my, int x, int y, int w, int h) {
+        return mx >= x && mx <= x + w && my >= y && my <= y + h;
+    }
+
+    public static float lerp(float a, float b, float t) {
+        return a + (b - a) * t;
+    }
+
+    public static int lerpColor(int from, int to, float t) {
+        t = Math.max(0f, Math.min(1f, t));
+        int af = (from >> 24) & 0xFF, rf = (from >> 16) & 0xFF, gf = (from >> 8) & 0xFF, bf = from & 0xFF;
+        int at = (to >> 24) & 0xFF, rt = (to >> 16) & 0xFF, gt = (to >> 8) & 0xFF, bt = to & 0xFF;
+        int a = (int) lerp(af, at, t);
+        int r = (int) lerp(rf, rt, t);
+        int g = (int) lerp(gf, gt, t);
+        int b = (int) lerp(bf, bt, t);
+        return (a << 24) | (r << 16) | (g << 8) | b;
     }
 }

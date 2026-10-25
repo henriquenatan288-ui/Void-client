@@ -15,18 +15,21 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Main ClickGUI screen — dark neon, sidebar + module cards + settings panels.
- * Opens with Right Shift.
+ * Modern black & white ClickGUI.
+ * Sidebar categories + compact module cards + settings panel.
  */
 public class ClickGuiScreen extends Screen {
 
-    private static final int SIDEBAR_WIDTH = 140;
-    private static final int CARD_GAP = 8;
-    private static final int PAD = 12;
+    private static final int SIDEBAR_W = 120;
+    private static final int PAD = 14;
+    private static final int CARD_GAP = 6;
 
-    private Category selectedCategory = Category.COMBAT;
+    private Category selected = Category.COMBAT;
     private final List<ModuleCard> cards = new ArrayList<>();
     private SettingsPanel settingsPanel;
+
+    private float openAnim = 0f;
+    private long lastNs = System.nanoTime();
 
     public ClickGuiScreen() {
         super(Text.literal("Void Client"));
@@ -34,59 +37,78 @@ public class ClickGuiScreen extends Screen {
 
     @Override
     protected void init() {
+        openAnim = 0f;
+        lastNs = System.nanoTime();
         rebuildCards();
     }
 
     private void rebuildCards() {
         cards.clear();
         if (VoidClient.MODULE_MANAGER == null) return;
-
-        List<Module> modules = VoidClient.MODULE_MANAGER.getByCategory(selectedCategory);
-        for (Module m : modules) {
+        for (Module m : VoidClient.MODULE_MANAGER.getByCategory(selected)) {
+            if (m.getName().equalsIgnoreCase("ClickGUI")) continue;
             cards.add(new ModuleCard(m));
         }
     }
 
+    private float deltaSeconds() {
+        long now = System.nanoTime();
+        float d = (now - lastNs) / 1_000_000_000f;
+        lastNs = now;
+        return Math.min(d, 0.05f);
+    }
+
     @Override
-    public void render(DrawContext context, int mouseX, int mouseY, float delta) {
-        RenderUtils.fill(context, 0, 0, width, height, Theme.OVERLAY);
+    public void render(DrawContext context, int mouseX, int mouseY, float tickDelta) {
+        float dt = deltaSeconds();
+        openAnim = Math.min(1f, openAnim + dt * 6f);
 
-        RenderUtils.fill(context, 0, 0, SIDEBAR_WIDTH, height, Theme.BG_SIDEBAR);
-        RenderUtils.fill(context, SIDEBAR_WIDTH - 1, 0, 1, height, Theme.BORDER);
+        float slide = (1f - openAnim);
+        int sidebarOffset = (int) (-SIDEBAR_W * slide * 0.5f);
+        int contentFade = (int) (20 * slide);
 
-        RenderUtils.drawText(context, textRenderer, "VOID", 16, 16, Theme.ACCENT, false);
-        RenderUtils.drawText(context, textRenderer, "CLIENT", 16, 28, Theme.TEXT_PRIMARY, false);
+        int overlayAlpha = (int) (0xB0 * openAnim);
+        RenderUtils.fill(context, 0, 0, width, height, (overlayAlpha << 24));
+
+        int sx = sidebarOffset;
+        RenderUtils.fill(context, sx, 0, SIDEBAR_W, height, Theme.BG_SIDEBAR);
+        RenderUtils.fill(context, sx + SIDEBAR_W - 1, 0, 1, height, Theme.BORDER);
+
+        RenderUtils.drawText(context, textRenderer, "VOID", sx + 14, 18, Theme.TEXT_PRIMARY, false);
+        RenderUtils.drawText(context, textRenderer, "CLIENT", sx + 14, 30, Theme.TEXT_MUTED, false);
 
         int cy = 56;
         for (Category cat : Category.values()) {
-            boolean selected = cat == selectedCategory;
-            boolean hovered = RenderUtils.isHovered(mouseX, mouseY, 8, cy, SIDEBAR_WIDTH - 16, 22);
+            boolean sel = cat == selected;
+            boolean hov = RenderUtils.hovered(mouseX, mouseY, sx + 8, cy, SIDEBAR_W - 16, 22);
 
-            if (selected) {
-                RenderUtils.fillRounded(context, 8, cy, SIDEBAR_WIDTH - 16, 22, 4, Theme.ACCENT_DIM);
-            } else if (hovered) {
-                RenderUtils.fillRounded(context, 8, cy, SIDEBAR_WIDTH - 16, 22, 4, Theme.BG_CARD);
+            if (sel) {
+                RenderUtils.fillRounded(context, sx + 8, cy, SIDEBAR_W - 16, 22, 4, Theme.BG_SELECTED);
+                RenderUtils.fill(context, sx + 8, cy + 5, 2, 12, Theme.ACCENT);
+            } else if (hov) {
+                RenderUtils.fillRounded(context, sx + 8, cy, SIDEBAR_W - 16, 22, 4, Theme.BG_CARD);
             }
 
-            int color = selected ? Theme.TEXT_PRIMARY : Theme.TEXT_SECONDARY;
-            RenderUtils.drawText(context, textRenderer, cat.getDisplayName(), 18, cy + 7, color, false);
+            int col = sel ? Theme.TEXT_PRIMARY : Theme.TEXT_SECONDARY;
+            RenderUtils.drawText(context, textRenderer, cat.getDisplayName(), sx + 18, cy + 7, col, false);
             cy += 26;
         }
 
-        int contentX = SIDEBAR_WIDTH + PAD;
-        int contentY = PAD + 8;
+        int contentX = SIDEBAR_W + PAD;
+        int contentY = PAD + 6 - contentFade;
 
-        RenderUtils.drawText(context, textRenderer, selectedCategory.getDisplayName(), contentX, contentY, Theme.TEXT_PRIMARY, false);
+        RenderUtils.drawText(context, textRenderer, selected.getDisplayName(), contentX, contentY, Theme.TEXT_PRIMARY, false);
 
-        int startY = contentY + 24;
+        int startY = contentY + 22;
         int col = 0;
         int row = 0;
-        int maxCols = Math.max(1, (width - SIDEBAR_WIDTH - PAD * 2) / (ModuleCard.WIDTH + CARD_GAP));
+        int maxCols = Math.max(1, (width - SIDEBAR_W - PAD * 2) / (ModuleCard.WIDTH + CARD_GAP));
 
         for (ModuleCard card : cards) {
             int cx = contentX + col * (ModuleCard.WIDTH + CARD_GAP);
             int cy2 = startY + row * (ModuleCard.HEIGHT + CARD_GAP);
             card.setPosition(cx, cy2);
+            card.update(mouseX, mouseY, dt);
             card.render(context, textRenderer, mouseX, mouseY);
 
             col++;
@@ -97,22 +119,27 @@ public class ClickGuiScreen extends Screen {
         }
 
         if (cards.isEmpty()) {
-            RenderUtils.drawText(context, textRenderer, "No modules in this category", contentX, startY + 20, Theme.TEXT_MUTED, false);
+            RenderUtils.drawText(context, textRenderer, "No modules here yet", contentX, startY + 12, Theme.TEXT_MUTED, false);
         }
 
         if (settingsPanel != null && settingsPanel.isVisible()) {
+            settingsPanel.update(dt);
             settingsPanel.render(context, textRenderer, mouseX, mouseY);
         }
 
-        RenderUtils.drawText(context, textRenderer, "Right Shift to close  |  Left click toggle  |  Right click settings", contentX, height - 16, Theme.TEXT_MUTED, false);
+        RenderUtils.drawText(context, textRenderer,
+                "RShift close  ·  LMB toggle  ·  RMB settings",
+                contentX, height - 14, Theme.TEXT_MUTED, false);
     }
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        int sx = 0;
+
         int cy = 56;
         for (Category cat : Category.values()) {
-            if (RenderUtils.isHovered((int) mouseX, (int) mouseY, 8, cy, SIDEBAR_WIDTH - 16, 22)) {
-                selectedCategory = cat;
+            if (RenderUtils.hovered((int) mouseX, (int) mouseY, sx + 8, cy, SIDEBAR_W - 16, 22)) {
+                selected = cat;
                 rebuildCards();
                 settingsPanel = null;
                 return true;
@@ -122,9 +149,7 @@ public class ClickGuiScreen extends Screen {
 
         if (settingsPanel != null && settingsPanel.isVisible()) {
             if (settingsPanel.mouseClicked(mouseX, mouseY, button, textRenderer)) {
-                if (!settingsPanel.isVisible()) {
-                    settingsPanel = null;
-                }
+                if (!settingsPanel.isVisible()) settingsPanel = null;
                 return true;
             }
         }
@@ -132,7 +157,11 @@ public class ClickGuiScreen extends Screen {
         for (ModuleCard card : cards) {
             if (card.mouseClicked(mouseX, mouseY, button)) {
                 if (button == 1) {
-                    settingsPanel = new SettingsPanel(card.getModule(), card.getX() + ModuleCard.WIDTH + 8, card.getY());
+                    int px = card.getX() + ModuleCard.WIDTH + 8;
+                    int py = card.getY();
+                    if (px + SettingsPanel.WIDTH > width - 8) px = card.getX() - SettingsPanel.WIDTH - 8;
+                    if (py + 80 > height) py = height - 100;
+                    settingsPanel = new SettingsPanel(card.getModule(), Math.max(SIDEBAR_W + 4, px), Math.max(8, py));
                 }
                 return true;
             }
