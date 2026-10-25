@@ -23,29 +23,23 @@ import dev.voidclient.modules.render.Freelook;
 import dev.voidclient.modules.render.Fullbright;
 import dev.voidclient.modules.render.Particles;
 import dev.voidclient.modules.render.PlayerESP;
-import dev.voidclient.modules.utility.Welcome;
+import dev.voidclient.modules.render.Tracers;
 
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
-/**
- * Holds and manages all modules.
- */
+/** Holds and manages all modules. */
 public class ModuleManager {
-
     private final List<Module> modules = new ArrayList<>();
 
     public ModuleManager(EventBus eventBus) {
-        // GUI
         register(new ClickGuiModule());
 
-        // Combat
         register(new AutoTotem());
         register(new SlowHit());
 
-        // Movement
         register(new Fly());
         register(new Jesus());
         register(new FlyBoat());
@@ -53,19 +47,17 @@ public class ModuleManager {
         register(new NoFall());
         register(new ToggleSprint());
 
-        // Render
         register(new Freecam());
         register(new Freelook());
         register(new BlockESP());
         register(new PlayerESP());
+        register(new Tracers());
         register(new Particles());
         register(new BreakWaves());
         register(new Fullbright());
 
-        // Utility
-        register(new Welcome());
+        // Welcome is an automatic join message, not a user-toggleable module.
 
-        // HUD
         register(new FPS());
         register(new ArrayListHud());
         register(new Watermark());
@@ -121,8 +113,8 @@ public class ModuleManager {
                     fps.render(event.getContext(), event.getTickDelta());
                 } else if (module instanceof ArrayListHud array) {
                     array.render(event.getContext(), event.getTickDelta());
-                } else if (module instanceof Watermark wm) {
-                    wm.render(event.getContext(), event.getTickDelta());
+                } else if (module instanceof Watermark watermark) {
+                    watermark.render(event.getContext(), event.getTickDelta());
                 } else if (module instanceof BlockESP blockEsp) {
                     blockEsp.renderHud(event.getContext(), event.getTickDelta());
                 } else if (module instanceof PlayerESP playerEsp) {
@@ -138,7 +130,6 @@ public class ModuleManager {
 
     private void onKey(KeyEvent event) {
         if (!event.isPress()) return;
-
         for (Module module : modules) {
             if (module.getKeybind() != -1 && module.getKeybind() == event.getKey()) {
                 module.toggle();
