@@ -39,7 +39,7 @@ public final class EmbeddedTextures {
                 img.setColorArgb(x, y, argb);
             }
         }
-        mc.getTextureManager().registerTexture(id, new NativeImageBackedTexture(img));
+        mc.getTextureManager().registerTexture(id, new NativeImageBackedTexture(() -> id.toString(), img));
     }
 
     private static void registerRounded(MinecraftClient mc, Identifier id, int size, int radius, int r, int g, int b, int a) {
@@ -57,7 +57,7 @@ public final class EmbeddedTextures {
                 }
             }
         }
-        mc.getTextureManager().registerTexture(id, new NativeImageBackedTexture(img));
+        mc.getTextureManager().registerTexture(id, new NativeImageBackedTexture(() -> id.toString(), img));
     }
 
     private static void registerShadow(MinecraftClient mc, Identifier id, int size) {
@@ -72,7 +72,7 @@ public final class EmbeddedTextures {
                 img.setColorArgb(x, y, (alpha << 24));
             }
         }
-        mc.getTextureManager().registerTexture(id, new NativeImageBackedTexture(img));
+        mc.getTextureManager().registerTexture(id, new NativeImageBackedTexture(() -> id.toString(), img));
     }
 
     private static boolean insideRounded(int x, int y, int w, int h, int r) {

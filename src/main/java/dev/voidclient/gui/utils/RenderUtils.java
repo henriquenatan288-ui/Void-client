@@ -2,7 +2,7 @@ package dev.voidclient.gui.utils;
 
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.client.gl.RenderPipelines;
 import net.minecraft.util.Identifier;
 
 /**
