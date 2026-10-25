@@ -5,7 +5,7 @@ import dev.voidclient.core.Module;
 import dev.voidclient.core.setting.ColorSetting;
 import dev.voidclient.core.setting.NumberSetting;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.client.network.AbstractClientPlayerEntity;
 import net.minecraft.particle.DustParticleEffect;
 
 import java.util.Comparator;
@@ -38,7 +38,7 @@ public class Tracers extends Module {
         double startZ = mc.player.getZ();
         DustParticleEffect dust = new DustParticleEffect(color.getRgb(), 1.35f);
 
-        List<PlayerEntity> targets = mc.world.getPlayers().stream()
+        List<AbstractClientPlayerEntity> targets = mc.world.getPlayers().stream()
                 .filter(other -> other != mc.player)
                 .filter(other -> mc.player.squaredDistanceTo(other) <= maxDistanceSq)
                 .sorted(Comparator.comparingDouble(other -> mc.player.squaredDistanceTo(other)))
@@ -46,7 +46,7 @@ public class Tracers extends Module {
                 .toList();
 
         int count = dots.getInt();
-        for (PlayerEntity target : targets) {
+        for (AbstractClientPlayerEntity target : targets) {
             double endX = target.getX();
             double endY = target.getBodyY(0.55);
             double endZ = target.getZ();
