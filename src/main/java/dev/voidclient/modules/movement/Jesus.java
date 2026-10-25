@@ -9,37 +9,37 @@ import net.minecraft.registry.tag.FluidTags;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 
-/**
- * Walk on water / lava surface.
- */
+/** Walk on water and lava surfaces without repeatedly bouncing the player upward. */
 public class Jesus extends Module {
-
     public Jesus() {
-        super("Jesus", "Walk on water and lava.", Category.MOVEMENT);
+        super("Jesus", "Walk steadily on water and lava.", Category.MOVEMENT);
     }
 
     @Override
     public void onTick() {
         MinecraftClient mc = MinecraftClient.getInstance();
-        ClientPlayerEntity p = mc.player;
-        if (p == null || mc.world == null) return;
-        if (p.isSneaking()) return;
+        ClientPlayerEntity player = mc.player;
+        if (player == null || mc.world == null || player.isSneaking()) return;
 
-        BlockPos pos = p.getBlockPos();
-        FluidState fluid = mc.world.getFluidState(pos);
-        FluidState below = mc.world.getFluidState(pos.down());
+        BlockPos feetPos = player.getBlockPos();
+        BlockPos belowPos = feetPos.down();
+        FluidState atFeet = mc.world.getFluidState(feetPos);
+        FluidState below = mc.world.getFluidState(belowPos);
 
-        boolean inOrOnFluid = fluid.isIn(FluidTags.WATER) || fluid.isIn(FluidTags.LAVA)
-                || below.isIn(FluidTags.WATER) || below.isIn(FluidTags.LAVA);
+        boolean feetInWater = atFeet.isIn(FluidTags.WATER);
+        boolean feetInLava = atFeet.isIn(FluidTags.LAVA);
+        boolean fluidBelow = below.isIn(FluidTags.WATER) || below.isIn(FluidTags.LAVA);
+        if (!feetInWater && !feetInLava && !fluidBelow) return;
 
-        if (!inOrOnFluid) return;
-
-        // Keep player on surface
-        Vec3d v = p.getVelocity();
-        if (v.y < 0.1) {
-            p.setVelocity(v.x, 0.08, v.z);
+        Vec3d velocity = player.getVelocity();
+        if (feetInWater || feetInLava) {
+            // Lift out of the fluid only while submerged; once at the surface, stop vertical motion.
+            player.setVelocity(velocity.x, Math.max(0.08, velocity.y), velocity.z);
+        } else if (fluidBelow && velocity.y <= 0.0) {
+            player.setVelocity(velocity.x, 0.0, velocity.z);
+            player.setOnGround(true);
         }
-        p.setOnGround(true);
-        p.fallDistance = 0;
+
+        player.fallDistance = 0;
     }
 }
