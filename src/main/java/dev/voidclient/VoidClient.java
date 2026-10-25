@@ -9,7 +9,6 @@ import dev.voidclient.core.event.events.TickEvent;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
-import net.minecraft.client.gui.DrawContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,17 +46,7 @@ public class VoidClient implements ClientModInitializer {
         // Note: HudRenderCallback is deprecated in newer Fabric API but still present in 0.141.x for 1.21.11.
         // Signature: (DrawContext / GuiGraphics, DeltaTracker)
         HudRenderCallback.EVENT.register((drawContext, tickCounter) -> {
-            float tickDelta = 0f;
-            try {
-                // Yarn / Mojang name variations
-                tickDelta = tickCounter.getTickProgress(false);
-            } catch (Throwable ignored) {
-                try {
-                    tickDelta = tickCounter.getGameTimeDeltaPartialTick(false);
-                } catch (Throwable ignored2) {
-                    // fallback
-                }
-            }
+            float tickDelta = tickCounter.getTickProgress(false);
             EVENT_BUS.post(new Render2DEvent(drawContext, tickDelta));
         });
 
