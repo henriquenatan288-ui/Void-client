@@ -6,9 +6,6 @@ import dev.voidclient.gui.utils.RenderUtils;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 
-/**
- * Compact module row / card.
- */
 public class ModuleCard {
 
     public static final int WIDTH = 168;
@@ -27,10 +24,7 @@ public class ModuleCard {
         this.y = y;
     }
 
-    public Module getModule() {
-        return module;
-    }
-
+    public Module getModule() { return module; }
     public int getX() { return x; }
     public int getY() { return y; }
 
@@ -43,13 +37,11 @@ public class ModuleCard {
 
     public void render(DrawContext ctx, TextRenderer tr, int mouseX, int mouseY) {
         int bg = RenderUtils.lerpColor(Theme.BG_CARD, Theme.BG_CARD_HOVER, hoverAnim);
-        RenderUtils.fillRounded(ctx, x, y, WIDTH, HEIGHT, 5, bg);
+        RenderUtils.drawCard(ctx, x, y, WIDTH, HEIGHT, 5, bg);
 
         if (module.isEnabled()) {
             RenderUtils.outline(ctx, x, y, WIDTH, HEIGHT, Theme.ACCENT_DIM);
             RenderUtils.fill(ctx, x, y + 4, 2, HEIGHT - 8, Theme.ACCENT);
-        } else {
-            RenderUtils.outline(ctx, x, y, WIDTH, HEIGHT, Theme.BORDER);
         }
 
         RenderUtils.drawText(ctx, tr, module.getName(), x + 10, y + 7, Theme.TEXT_PRIMARY, false);
@@ -62,21 +54,15 @@ public class ModuleCard {
     }
 
     private void drawToggle(DrawContext ctx, int tx, int ty, boolean on) {
-        int w = 22;
-        int h = 12;
-        int track = on ? Theme.TOGGLE_ON : Theme.TOGGLE_OFF;
-        RenderUtils.fillRounded(ctx, tx, ty, w, h, 6, track);
-        int knob = on ? Theme.TOGGLE_KNOB_ON : Theme.TOGGLE_KNOB_OFF;
+        int w = 22, h = 12;
+        RenderUtils.fillRounded(ctx, tx, ty, w, h, 6, on ? Theme.TOGGLE_ON : Theme.TOGGLE_OFF);
         int kx = on ? tx + w - 11 : tx + 2;
-        RenderUtils.fillRounded(ctx, kx, ty + 2, 8, 8, 4, knob);
+        RenderUtils.fillRounded(ctx, kx, ty + 2, 8, 8, 4, on ? Theme.TOGGLE_KNOB_ON : Theme.TOGGLE_KNOB_OFF);
     }
 
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (!RenderUtils.hovered((int) mouseX, (int) mouseY, x, y, WIDTH, HEIGHT)) return false;
-        if (button == 0) {
-            module.toggle();
-            return true;
-        }
+        if (button == 0) { module.toggle(); return true; }
         return button == 1;
     }
 }
