@@ -5,9 +5,20 @@ import dev.voidclient.core.event.events.KeyEvent;
 import dev.voidclient.core.event.events.Render2DEvent;
 import dev.voidclient.core.event.events.TickEvent;
 import dev.voidclient.gui.ClickGuiModule;
+import dev.voidclient.modules.combat.AutoTotem;
+import dev.voidclient.modules.combat.SlowHit;
 import dev.voidclient.modules.hud.FPS;
+import dev.voidclient.modules.movement.Fly;
+import dev.voidclient.modules.movement.FlyBoat;
+import dev.voidclient.modules.movement.Jesus;
 import dev.voidclient.modules.movement.ToggleSprint;
+import dev.voidclient.modules.render.BlockESP;
+import dev.voidclient.modules.render.BreakWaves;
+import dev.voidclient.modules.render.Freecam;
+import dev.voidclient.modules.render.Freelook;
 import dev.voidclient.modules.render.Fullbright;
+import dev.voidclient.modules.render.Particles;
+import dev.voidclient.modules.utility.Welcome;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -22,10 +33,31 @@ public class ModuleManager {
     private final List<Module> modules = new ArrayList<>();
 
     public ModuleManager(EventBus eventBus) {
+        // GUI
         register(new ClickGuiModule());
 
-        register(new Fullbright());
+        // Combat
+        register(new AutoTotem());
+        register(new SlowHit());
+
+        // Movement
+        register(new Fly());
+        register(new Jesus());
+        register(new FlyBoat());
         register(new ToggleSprint());
+
+        // Render
+        register(new Freecam());
+        register(new Freelook());
+        register(new BlockESP());
+        register(new Particles());
+        register(new BreakWaves());
+        register(new Fullbright());
+
+        // Utility
+        register(new Welcome());
+
+        // HUD
         register(new FPS());
 
         eventBus.subscribe(TickEvent.class, this::onTick);
@@ -77,6 +109,8 @@ public class ModuleManager {
             try {
                 if (module instanceof FPS fps) {
                     fps.render(event.getContext(), event.getTickDelta());
+                } else if (module instanceof BlockESP blockEsp) {
+                    blockEsp.renderHud(event.getContext(), event.getTickDelta());
                 } else {
                     module.onRender2D(event.getTickDelta());
                 }
