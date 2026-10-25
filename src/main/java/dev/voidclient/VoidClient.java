@@ -1,6 +1,5 @@
 package dev.voidclient;
 
-import com.mojang.blaze3d.platform.InputConstants;
 import dev.voidclient.core.ModuleManager;
 import dev.voidclient.core.config.ConfigManager;
 import dev.voidclient.core.event.EventBus;
@@ -12,8 +11,9 @@ import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
-import net.minecraft.client.KeyMapping;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.option.KeyBinding;
+import net.minecraft.client.util.InputUtil;
 import net.minecraft.util.Identifier;
 import org.lwjgl.glfw.GLFW;
 import org.slf4j.Logger;
@@ -32,7 +32,7 @@ public class VoidClient implements ClientModInitializer {
     public static ConfigManager CONFIG_MANAGER;
 
     /** Official Fabric keybind — Right Shift opens ClickGUI */
-    public static KeyMapping OPEN_GUI_KEY;
+    public static KeyBinding OPEN_GUI_KEY;
 
     @Override
     public void onInitializeClient() {
@@ -43,14 +43,14 @@ public class VoidClient implements ClientModInitializer {
         CONFIG_MANAGER = new ConfigManager(MODULE_MANAGER);
         CONFIG_MANAGER.load();
 
-        // ── KeyBinding oficial (1.21.11) ──────────────────────────────────
-        KeyMapping.Category category = KeyMapping.Category.register(
+        // ── KeyBinding oficial (Yarn 1.21.11) ─────────────────────────────
+        KeyBinding.Category category = KeyBinding.Category.register(
                 Identifier.of(MOD_ID, "main")
         );
 
-        OPEN_GUI_KEY = KeyBindingHelper.registerKeyBinding(new KeyMapping(
+        OPEN_GUI_KEY = KeyBindingHelper.registerKeyBinding(new KeyBinding(
                 "key.voidclient.clickgui",
-                InputConstants.Type.KEYSYM,
+                InputUtil.Type.KEYSYM,
                 GLFW.GLFW_KEY_RIGHT_SHIFT,
                 category
         ));
@@ -58,8 +58,7 @@ public class VoidClient implements ClientModInitializer {
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             EVENT_BUS.post(new TickEvent());
 
-            // Open / close ClickGUI with Right Shift (or rebound key)
-            while (OPEN_GUI_KEY.consumeClick()) {
+            while (OPEN_GUI_KEY.wasPressed()) {
                 toggleClickGui(client);
             }
         });
@@ -81,7 +80,6 @@ public class VoidClient implements ClientModInitializer {
             return;
         }
 
-        // Only open when no other screen is blocking (or allow over world)
         if (client.currentScreen == null) {
             client.setScreen(new ClickGuiScreen());
             LOGGER.info("ClickGUI opened");
