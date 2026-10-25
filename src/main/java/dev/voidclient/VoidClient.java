@@ -1,14 +1,21 @@
 package dev.voidclient;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dev.voidclient.core.ModuleManager;
 import dev.voidclient.core.config.ConfigManager;
 import dev.voidclient.core.event.EventBus;
 import dev.voidclient.core.event.events.KeyEvent;
 import dev.voidclient.core.event.events.Render2DEvent;
 import dev.voidclient.core.event.events.TickEvent;
+import dev.voidclient.gui.ClickGuiScreen;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
+import net.minecraft.client.KeyMapping;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.util.Identifier;
+import org.lwjgl.glfw.GLFW;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,6 +31,9 @@ public class VoidClient implements ClientModInitializer {
     public static ModuleManager MODULE_MANAGER;
     public static ConfigManager CONFIG_MANAGER;
 
+    /** Official Fabric keybind — Right Shift opens ClickGUI */
+    public static KeyMapping OPEN_GUI_KEY;
+
     @Override
     public void onInitializeClient() {
         LOGGER.info("{} {} initializing...", NAME, VERSION);
@@ -33,15 +43,49 @@ public class VoidClient implements ClientModInitializer {
         CONFIG_MANAGER = new ConfigManager(MODULE_MANAGER);
         CONFIG_MANAGER.load();
 
-        ClientTickEvents.END_CLIENT_TICK.register(client -> EVENT_BUS.post(new TickEvent()));
+        // ── KeyBinding oficial (1.21.11) ──────────────────────────────────
+        KeyMapping.Category category = KeyMapping.Category.register(
+                Identifier.of(MOD_ID, "main")
+        );
 
-        // Yarn: getTickProgress(boolean) on DeltaTracker / RenderTickCounter
+        OPEN_GUI_KEY = KeyBindingHelper.registerKeyBinding(new KeyMapping(
+                "key.voidclient.clickgui",
+                InputConstants.Type.KEYSYM,
+                GLFW.GLFW_KEY_RIGHT_SHIFT,
+                category
+        ));
+
+        ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            EVENT_BUS.post(new TickEvent());
+
+            // Open / close ClickGUI with Right Shift (or rebound key)
+            while (OPEN_GUI_KEY.consumeClick()) {
+                toggleClickGui(client);
+            }
+        });
+
         HudRenderCallback.EVENT.register((drawContext, tickCounter) -> {
             float tickDelta = tickCounter.getTickProgress(false);
             EVENT_BUS.post(new Render2DEvent(drawContext, tickDelta));
         });
 
-        LOGGER.info("{} initialized. Modules: {}", NAME, MODULE_MANAGER.getModules().size());
+        LOGGER.info("{} initialized. Modules: {}. Press Right Shift for GUI.",
+                NAME, MODULE_MANAGER.getModules().size());
+    }
+
+    private static void toggleClickGui(MinecraftClient client) {
+        if (client == null) return;
+
+        if (client.currentScreen instanceof ClickGuiScreen) {
+            client.currentScreen.close();
+            return;
+        }
+
+        // Only open when no other screen is blocking (or allow over world)
+        if (client.currentScreen == null) {
+            client.setScreen(new ClickGuiScreen());
+            LOGGER.info("ClickGUI opened");
+        }
     }
 
     public static void postKeyEvent(int key, int scancode, int action, int modifiers) {

@@ -6,18 +6,20 @@ import net.minecraft.client.MinecraftClient;
 import org.lwjgl.glfw.GLFW;
 
 /**
- * Opens the ClickGUI. Default key: Right Shift.
+ * Opens the ClickGUI. Default key handled by Fabric KeyBinding (Right Shift).
+ * Module still exists so it shows in the module list / config.
  */
 public class ClickGuiModule extends Module {
 
     public ClickGuiModule() {
-        super("ClickGUI", "Opens the client interface.", Category.MISC, GLFW.GLFW_KEY_RIGHT_SHIFT);
+        // keybind -1: opening is done by VoidClient.OPEN_GUI_KEY
+        super("ClickGUI", "Opens the client interface.", Category.MISC, -1);
     }
 
     @Override
     protected void onEnable() {
         MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc != null) {
+        if (mc != null && !(mc.currentScreen instanceof ClickGuiScreen)) {
             mc.setScreen(new ClickGuiScreen());
         }
         setEnabled(false);
