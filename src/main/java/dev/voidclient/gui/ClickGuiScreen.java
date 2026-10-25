@@ -5,6 +5,7 @@ import dev.voidclient.core.Category;
 import dev.voidclient.core.Module;
 import dev.voidclient.gui.components.ModuleCard;
 import dev.voidclient.gui.components.SettingsPanel;
+import dev.voidclient.gui.utils.EmbeddedTextures;
 import dev.voidclient.gui.utils.RenderUtils;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
@@ -39,13 +40,13 @@ public class ClickGuiScreen extends Screen {
     protected void init() {
         openAnim = 0f;
         lastNs = System.nanoTime();
+        EmbeddedTextures.ensureRegistered();
         rebuildCards();
     }
 
     private void rebuildCards() {
         cards.clear();
-        if (VoidClient.MODULE_MANAGER == null) return;
-        for (Module m : VoidClient.MODULE_MANAGER.getByCategory(selected)) {
+        if (VoidClient.MODULE_MANAGER == null) return;//}n        for (Module m : VoidClient.MODULE_MANAGER.getByCategory(selected)) {
             if (m.getName().equalsIgnoreCase("ClickGUI")) continue;
             cards.add(new ModuleCard(m));
         }
