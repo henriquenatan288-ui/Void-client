@@ -55,8 +55,8 @@ public class Freecam extends Module {
 
         if (player != null) {
             player.setPosition(savedX, savedY, savedZ);
-            player.setYaw(savedYaw);
-            player.setPitch(savedPitch);
+            player.setYaw(cameraEntity != null ? cameraEntity.getYaw() : savedYaw);
+            player.setPitch(cameraEntity != null ? cameraEntity.getPitch() : savedPitch);
             player.setVelocity(Vec3d.ZERO);
             player.fallDistance = 0;
         }
@@ -76,10 +76,8 @@ public class Freecam extends Module {
         player.setVelocity(Vec3d.ZERO);
         player.fallDistance = 0;
 
-        camera.setYaw(player.getYaw());
-        camera.setPitch(player.getPitch());
-        camera.setHeadYaw(player.getYaw());
-        camera.setBodyYaw(player.getYaw());
+        // Mouse look now belongs to the detached camera entity; do not overwrite it
+        // with the frozen player's rotation each tick.
         camera.noClip = true;
 
         Vec3d look = camera.getRotationVector();
@@ -88,8 +86,8 @@ public class Freecam extends Module {
 
         double s = speed.get();
         Vec3d movement = Vec3d.ZERO;
-        if (mc.options.forwardKey.isPressed()) movement = movement.add(flatForward.multiply(s));
-        if (mc.options.backKey.isPressed()) movement = movement.add(flatForward.multiply(-s));
+        if (mc.options.forwardKey.isPressed()) movement = movement.add(look.multiply(s));
+        if (mc.options.backKey.isPressed()) movement = movement.add(look.multiply(-s));
         if (mc.options.leftKey.isPressed()) movement = movement.add(new Vec3d(flatForward.z, 0, -flatForward.x).multiply(s));
         if (mc.options.rightKey.isPressed()) movement = movement.add(new Vec3d(-flatForward.z, 0, flatForward.x).multiply(s));
         if (mc.options.jumpKey.isPressed()) movement = movement.add(0, s, 0);
