@@ -12,7 +12,7 @@ import java.util.List;
 public class SettingsPanel {
 
     public static final int WIDTH = 190;
-    private int x, y;
+    private final int x, y;
     private final Module module;
     private boolean visible = true;
     private float openAnim = 0f;
@@ -33,8 +33,7 @@ public class SettingsPanel {
         List<Setting<?>> settings = module.getSettings();
         int h = 26;
         for (Setting<?> s : settings) {
-            if (s instanceof NumberSetting) h += 26;
-            else h += 18;
+            h += (s instanceof NumberSetting) ? 26 : 18;
         }
         if (settings.isEmpty()) h += 16;
         return h + 6;
@@ -48,7 +47,7 @@ public class SettingsPanel {
         RenderUtils.drawPanel(ctx, x, drawY, WIDTH, h, 6, Theme.BG_PANEL);
 
         RenderUtils.drawText(ctx, tr, module.getName(), x + 8, drawY + 8, Theme.TEXT_PRIMARY, false);
-        RenderUtils.drawText(ctx, tr, "×", x + WIDTH - 14, drawY + 7, Theme.TEXT_SECONDARY, false);
+        RenderUtils.drawText(ctx, tr, "x", x + WIDTH - 14, drawY + 7, Theme.TEXT_SECONDARY, false);
 
         int cy = drawY + 26;
         List<Setting<?>> settings = module.getSettings();

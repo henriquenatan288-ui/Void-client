@@ -2,11 +2,9 @@ package dev.voidclient.gui.utils;
 
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gl.RenderPipelines;
-import net.minecraft.util.Identifier;
 
 /**
- * Drawing helpers: procedural shapes + textured panels (1.21.11).
+ * Stable drawing helpers for 1.21.11 (no blit / no custom pipelines).
  */
 public final class RenderUtils {
 
@@ -44,9 +42,6 @@ public final class RenderUtils {
     }
 
     public static void drawShadow(DrawContext ctx, int x, int y, int w, int h, int radius) {
-        if (blit(ctx, GuiTextures.SHADOW, x - 8, y - 4, w + 16, h + 16)) {
-            return;
-        }
         int[] alphas = {0x10000000, 0x18000000, 0x22000000};
         for (int i = 0; i < alphas.length; i++) {
             int o = (alphas.length - i) * 2;
@@ -54,42 +49,15 @@ public final class RenderUtils {
         }
     }
 
-    public static void drawPanel(DrawContext ctx, int x, int y, int w, int h, int radius, int fallbackColor) {
+    public static void drawPanel(DrawContext ctx, int x, int y, int w, int h, int radius, int color) {
         drawShadow(ctx, x, y, w, h, radius);
-        if (!blit(ctx, GuiTextures.PANEL, x, y, w, h)) {
-            fillRounded(ctx, x, y, w, h, radius, fallbackColor);
-            outline(ctx, x, y, w, h, 0x1CFFFFFF);
-        }
+        fillRounded(ctx, x, y, w, h, radius, color);
+        outline(ctx, x, y, w, h, 0x28FFFFFF);
     }
 
-    public static void drawCard(DrawContext ctx, int x, int y, int w, int h, int radius, int fallbackColor) {
-        if (!blit(ctx, GuiTextures.CARD, x, y, w, h)) {
-            fillRounded(ctx, x, y, w, h, radius, fallbackColor);
-            outline(ctx, x, y, w, h, 0x14FFFFFF);
-        }
-    }
-
-    /**
-     * VERIFICAR: overload de blit no Yarn 1.21.11 do seu build.
-     * Docs: blit(RenderPipelines.GUI_TEXTURED, id, x, y, u, v, w, h, texW, texH)
-     */
-    public static boolean blit(DrawContext ctx, Identifier texture, int x, int y, int w, int h) {
-        if (w <= 0 || h <= 0) return false;
-        int tex = textureSize(texture);
-        try {
-            ctx.blit(RenderPipelines.GUI_TEXTURED, texture, x, y, 0f, 0f, w, h, tex, tex);
-            return true;
-        } catch (Throwable ignored) {
-            return false;
-        }
-    }
-
-    private static int textureSize(Identifier texture) {
-        String p = texture.getPath();
-        if (p.contains("shadow")) return 96;
-        if (p.contains("white")) return 1;
-        if (p.contains("accent")) return 32;
-        return 64;
+    public static void drawCard(DrawContext ctx, int x, int y, int w, int h, int radius, int color) {
+        fillRounded(ctx, x, y, w, h, radius, color);
+        outline(ctx, x, y, w, h, 0x1CFFFFFF);
     }
 
     public static void drawText(DrawContext ctx, TextRenderer tr, String text, int x, int y, int color, boolean shadow) {

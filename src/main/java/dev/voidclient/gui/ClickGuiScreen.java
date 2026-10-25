@@ -5,11 +5,8 @@ import dev.voidclient.core.Category;
 import dev.voidclient.core.Module;
 import dev.voidclient.gui.components.ModuleCard;
 import dev.voidclient.gui.components.SettingsPanel;
-import dev.voidclient.gui.utils.EmbeddedTextures;
 import dev.voidclient.gui.utils.RenderUtils;
-import net.minecraft.client.gui.Click;
 import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.input.KeyInput;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.text.Text;
 import org.lwjgl.glfw.GLFW;
@@ -17,10 +14,6 @@ import org.lwjgl.glfw.GLFW;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Modern black & white ClickGUI.
- * Sidebar categories + compact module cards + settings panel.
- */
 public class ClickGuiScreen extends Screen {
 
     private static final int SIDEBAR_W = 120;
@@ -42,7 +35,6 @@ public class ClickGuiScreen extends Screen {
     protected void init() {
         openAnim = 0f;
         lastNs = System.nanoTime();
-        EmbeddedTextures.ensureRegistered();
         rebuildCards();
     }
 
@@ -67,7 +59,7 @@ public class ClickGuiScreen extends Screen {
         float dt = deltaSeconds();
         openAnim = Math.min(1f, openAnim + dt * 6f);
 
-        float slide = (1f - openAnim);
+        float slide = 1f - openAnim;
         int sidebarOffset = (int) (-SIDEBAR_W * slide * 0.5f);
         int contentFade = (int) (20 * slide);
 
@@ -132,15 +124,12 @@ public class ClickGuiScreen extends Screen {
         }
 
         RenderUtils.drawText(context, textRenderer,
-                "RShift close  ·  LMB toggle  ·  RMB settings",
+                "RShift close  |  LMB toggle  |  RMB settings",
                 contentX, height - 14, Theme.TEXT_MUTED, false);
     }
 
     @Override
-    public boolean mouseClicked(Click click, boolean doubled) {
-        double mouseX = click.x();
-        double mouseY = click.y();
-        int button = click.button();
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
         int cy = 56;
         for (Category cat : Category.values()) {
             if (RenderUtils.hovered((int) mouseX, (int) mouseY, 8, cy, SIDEBAR_W - 16, 22)) {
@@ -172,17 +161,16 @@ public class ClickGuiScreen extends Screen {
             }
         }
 
-        return super.mouseClicked(click, doubled);
+        return super.mouseClicked(mouseX, mouseY, button);
     }
 
     @Override
-    public boolean keyPressed(KeyInput input) {
-        int keyCode = input.key();
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (keyCode == GLFW.GLFW_KEY_RIGHT_SHIFT || keyCode == GLFW.GLFW_KEY_ESCAPE) {
             close();
             return true;
         }
-        return super.keyPressed(input);
+        return super.keyPressed(keyCode, scanCode, modifiers);
     }
 
     @Override

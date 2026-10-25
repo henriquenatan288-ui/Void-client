@@ -54,15 +54,17 @@ public class ModuleCard {
     }
 
     private void drawToggle(DrawContext ctx, int tx, int ty, boolean on) {
-        int w = 22, h = 12;
-        RenderUtils.fillRounded(ctx, tx, ty, w, h, 6, on ? Theme.TOGGLE_ON : Theme.TOGGLE_OFF);
-        int kx = on ? tx + w - 11 : tx + 2;
+        RenderUtils.fillRounded(ctx, tx, ty, 22, 12, 6, on ? Theme.TOGGLE_ON : Theme.TOGGLE_OFF);
+        int kx = on ? tx + 11 : tx + 2;
         RenderUtils.fillRounded(ctx, kx, ty + 2, 8, 8, 4, on ? Theme.TOGGLE_KNOB_ON : Theme.TOGGLE_KNOB_OFF);
     }
 
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (!RenderUtils.hovered((int) mouseX, (int) mouseY, x, y, WIDTH, HEIGHT)) return false;
-        if (button == 0) { module.toggle(); return true; }
+        if (button == 0) {
+            module.toggle();
+            return true;
+        }
         return button == 1;
     }
 }
