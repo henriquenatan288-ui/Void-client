@@ -4,6 +4,7 @@ import dev.voidclient.core.event.EventBus;
 import dev.voidclient.core.event.events.KeyEvent;
 import dev.voidclient.core.event.events.Render2DEvent;
 import dev.voidclient.core.event.events.TickEvent;
+import dev.voidclient.gui.ClickGuiModule;
 import dev.voidclient.modules.hud.FPS;
 import dev.voidclient.modules.movement.ToggleSprint;
 import dev.voidclient.modules.render.Fullbright;
@@ -21,6 +22,8 @@ public class ModuleManager {
     private final List<Module> modules = new ArrayList<>();
 
     public ModuleManager(EventBus eventBus) {
+        register(new ClickGuiModule());
+
         register(new Fullbright());
         register(new ToggleSprint());
         register(new FPS());
