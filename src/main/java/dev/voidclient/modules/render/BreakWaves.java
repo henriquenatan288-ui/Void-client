@@ -8,14 +8,13 @@ import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.particle.DustParticleEffect;
 import net.minecraft.util.math.BlockPos;
-import org.joml.Vector3f;
 
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
 /**
- * 3 expanding wave rings when a block is broken.
+ * Expanding wave rings when a block is broken.
  */
 public class BreakWaves extends Module {
 
@@ -29,7 +28,7 @@ public class BreakWaves extends Module {
     private static boolean registered;
 
     public BreakWaves() {
-        super("BreakWaves", "3 waves when you break a block.", Category.RENDER);
+        super("BreakWaves", "Waves when you break a block.", Category.RENDER);
         if (!registered) {
             registered = true;
             PlayerBlockBreakEvents.AFTER.register((world, player, pos, state, entity) -> {
@@ -45,7 +44,7 @@ public class BreakWaves extends Module {
     }
 
     private void spawn(BlockPos pos) {
-        active.add(new Wave(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, 0));
+        active.add(new Wave(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5));
     }
 
     @Override
@@ -56,11 +55,8 @@ public class BreakWaves extends Module {
             return;
         }
 
-        int argb = color.get();
-        float r = ((argb >> 16) & 0xFF) / 255f;
-        float g = ((argb >> 8) & 0xFF) / 255f;
-        float b = (argb & 0xFF) / 255f;
-        DustParticleEffect dust = new DustParticleEffect(new Vector3f(r, g, b), 0.8f);
+        int rgb = color.get() & 0x00FFFFFF;
+        DustParticleEffect dust = new DustParticleEffect(rgb, 0.8f);
 
         int maxWaves = waves.getInt();
         Iterator<Wave> it = active.iterator();
@@ -68,7 +64,6 @@ public class BreakWaves extends Module {
             Wave w = it.next();
             w.age++;
 
-            // 3 staggered rings
             for (int ring = 0; ring < maxWaves; ring++) {
                 int localAge = w.age - ring * 3;
                 if (localAge < 0 || localAge > 12) continue;
@@ -92,11 +87,10 @@ public class BreakWaves extends Module {
         final double x, y, z;
         int age;
 
-        Wave(double x, double y, double z, int age) {
+        Wave(double x, double y, double z) {
             this.x = x;
             this.y = y;
             this.z = z;
-            this.age = age;
         }
     }
 }

@@ -8,15 +8,14 @@ import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.util.math.Vec3d;
 
 /**
- * Detached camera-style free movement (client fly, no clip feel).
- * Simplified stable version for 1.21.11 — no camera mixin required.
+ * Detached camera-style free movement (client fly + noClip).
  */
 public class Freecam extends Module {
 
     private final NumberSetting speed = addSetting(
             new NumberSetting("Speed", "Freecam speed", 1.5, 0.2, 8.0, 0.1));
 
-    private Vec3d savedPos;
+    private double savedX, savedY, savedZ;
     private float savedYaw, savedPitch;
     private boolean savedFlying, savedAllowFly;
 
@@ -30,7 +29,9 @@ public class Freecam extends Module {
         ClientPlayerEntity p = mc.player;
         if (p == null) return;
 
-        savedPos = p.getPos();
+        savedX = p.getX();
+        savedY = p.getY();
+        savedZ = p.getZ();
         savedYaw = p.getYaw();
         savedPitch = p.getPitch();
         savedFlying = p.getAbilities().flying;
@@ -49,11 +50,9 @@ public class Freecam extends Module {
         if (p == null) return;
 
         p.noClip = false;
-        if (savedPos != null) {
-            p.setPosition(savedPos.x, savedPos.y, savedPos.z);
-            p.setYaw(savedYaw);
-            p.setPitch(savedPitch);
-        }
+        p.setPosition(savedX, savedY, savedZ);
+        p.setYaw(savedYaw);
+        p.setPitch(savedPitch);
         if (!p.isCreative() && !p.isSpectator()) {
             p.getAbilities().allowFlying = savedAllowFly;
             p.getAbilities().flying = savedFlying;

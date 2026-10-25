@@ -12,15 +12,12 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.particle.DustParticleEffect;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Vec3d;
-import org.joml.Vector3f;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Highlights selected blocks nearby (particle outline + tracers toggle).
- * Block preset list via Mode setting.
+ * Highlights selected blocks nearby (particle outline + tracers).
  */
 public class BlockESP extends Module {
 
@@ -102,11 +99,14 @@ public class BlockESP extends Module {
 
     private void spawnParticles(MinecraftClient mc) {
         if (mc.world == null || mc.player == null) return;
-        int argb = color.get();
-        float r = ((argb >> 16) & 0xFF) / 255f;
-        float g = ((argb >> 8) & 0xFF) / 255f;
-        float b = (argb & 0xFF) / 255f;
-        DustParticleEffect dust = new DustParticleEffect(new Vector3f(r, g, b), 1.0f);
+
+        // Yarn 1.21.11: DustParticleEffect(int colorRgb, float scale)
+        int rgb = color.get() & 0x00FFFFFF;
+        DustParticleEffect dust = new DustParticleEffect(rgb, 1.0f);
+
+        double eyesX = mc.player.getX();
+        double eyesY = mc.player.getEyeY();
+        double eyesZ = mc.player.getZ();
 
         int limit = Math.min(found.size(), 40);
         for (int i = 0; i < limit; i++) {
@@ -117,21 +117,18 @@ public class BlockESP extends Module {
             mc.world.addParticleClient(dust, cx, cy, cz, 0, 0, 0);
 
             if (tracers.get()) {
-                Vec3d eyes = mc.player.getEyePos();
-                // sparse tracer particles along line
                 for (int t = 1; t <= 4; t++) {
                     double f = t / 5.0;
                     mc.world.addParticleClient(dust,
-                            eyes.x + (cx - eyes.x) * f,
-                            eyes.y + (cy - eyes.y) * f,
-                            eyes.z + (cz - eyes.z) * f,
+                            eyesX + (cx - eyesX) * f,
+                            eyesY + (cy - eyesY) * f,
+                            eyesZ + (cz - eyesZ) * f,
                             0, 0, 0);
                 }
             }
         }
     }
 
-    /** HUD count for debugging */
     public void renderHud(DrawContext ctx, float tickDelta) {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc.textRenderer == null) return;

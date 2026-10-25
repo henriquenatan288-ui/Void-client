@@ -41,7 +41,6 @@ public class FlyBoat extends Module {
 
         if (vel.lengthSquared() > 0) {
             boat.setVelocity(vel);
-            boat.velocityModified = true;
         }
     }
 }
