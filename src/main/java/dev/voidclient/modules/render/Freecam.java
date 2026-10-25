@@ -76,8 +76,12 @@ public class Freecam extends Module {
         player.setVelocity(Vec3d.ZERO);
         player.fallDistance = 0;
 
-        // Mouse look now belongs to the detached camera entity; do not overwrite it
-        // with the frozen player's rotation each tick.
+        // Vanilla mouse input still updates the local player's look direction.
+        // Mirror those angles to the detached camera without moving the real player.
+        camera.setYaw(player.getYaw());
+        camera.setPitch(player.getPitch());
+        camera.setHeadYaw(player.getYaw());
+        camera.setBodyYaw(player.getYaw());
         camera.noClip = true;
 
         Vec3d look = camera.getRotationVector();
