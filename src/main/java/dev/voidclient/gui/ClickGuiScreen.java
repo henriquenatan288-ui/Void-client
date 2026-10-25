@@ -46,7 +46,8 @@ public class ClickGuiScreen extends Screen {
 
     private void rebuildCards() {
         cards.clear();
-        if (VoidClient.MODULE_MANAGER == null) return;//}n        for (Module m : VoidClient.MODULE_MANAGER.getByCategory(selected)) {
+        if (VoidClient.MODULE_MANAGER == null) return;
+        for (Module m : VoidClient.MODULE_MANAGER.getByCategory(selected)) {
             if (m.getName().equalsIgnoreCase("ClickGUI")) continue;
             cards.add(new ModuleCard(m));
         }
@@ -135,11 +136,9 @@ public class ClickGuiScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        int sx = 0;
-
         int cy = 56;
         for (Category cat : Category.values()) {
-            if (RenderUtils.hovered((int) mouseX, (int) mouseY, sx + 8, cy, SIDEBAR_W - 16, 22)) {
+            if (RenderUtils.hovered((int) mouseX, (int) mouseY, 8, cy, SIDEBAR_W - 16, 22)) {
                 selected = cat;
                 rebuildCards();
                 settingsPanel = null;
