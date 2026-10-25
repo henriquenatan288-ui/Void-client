@@ -1,10 +1,10 @@
 package dev.voidclient.modules.render;
 
+import dev.voidclient.VoidClient;
 import dev.voidclient.core.Category;
 import dev.voidclient.core.Module;
 import dev.voidclient.core.setting.ColorSetting;
 import dev.voidclient.core.setting.NumberSetting;
-import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.particle.DustParticleEffect;
 import net.minecraft.util.math.BlockPos;
@@ -13,37 +13,29 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-/**
- * Expanding wave rings when a block is broken.
- */
+/** Expanding rings triggered after the local client successfully breaks a block. */
 public class BreakWaves extends Module {
-
     private final NumberSetting waves = addSetting(
-            new NumberSetting("Waves", "Number of waves", 3, 1, 6, 1));
-
+            new NumberSetting("Waves", "Number of expanding rings", 3, 1, 6, 1));
     private final ColorSetting color = addSetting(
             new ColorSetting("Color", "Wave color", 0xFFFFFFFF));
 
     private final List<Wave> active = new ArrayList<>();
-    private static boolean registered;
 
     public BreakWaves() {
-        super("BreakWaves", "Waves when you break a block.", Category.RENDER);
-        if (!registered) {
-            registered = true;
-            PlayerBlockBreakEvents.AFTER.register((world, player, pos, state, entity) -> {
-                MinecraftClient mc = MinecraftClient.getInstance();
-                if (mc.player == null || player != mc.player) return;
-                if (dev.voidclient.VoidClient.MODULE_MANAGER == null) return;
-                Module m = dev.voidclient.VoidClient.MODULE_MANAGER.getByName("BreakWaves");
-                if (m instanceof BreakWaves bw && bw.isEnabled()) {
-                    bw.spawn(pos);
-                }
-            });
+        super("BreakWaves", "Show expanding rings when you break a block.", Category.RENDER);
+    }
+
+    public static void onClientBlockBreak(BlockPos pos) {
+        if (VoidClient.MODULE_MANAGER == null || pos == null) return;
+        Module module = VoidClient.MODULE_MANAGER.getByName("BreakWaves");
+        if (module instanceof BreakWaves waves && waves.isEnabled()) {
+            waves.spawn(pos);
         }
     }
 
     private void spawn(BlockPos pos) {
+        if (active.size() >= 12) active.remove(0);
         active.add(new Wave(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5));
     }
 
@@ -55,38 +47,34 @@ public class BreakWaves extends Module {
             return;
         }
 
-        int rgb = color.get() & 0x00FFFFFF;
-        DustParticleEffect dust = new DustParticleEffect(rgb, 0.8f);
-
+        DustParticleEffect dust = new DustParticleEffect(color.getRgb(), 0.9f);
         int maxWaves = waves.getInt();
-        Iterator<Wave> it = active.iterator();
-        while (it.hasNext()) {
-            Wave w = it.next();
-            w.age++;
+        Iterator<Wave> iterator = active.iterator();
+        while (iterator.hasNext()) {
+            Wave wave = iterator.next();
+            wave.age++;
 
             for (int ring = 0; ring < maxWaves; ring++) {
-                int localAge = w.age - ring * 3;
-                if (localAge < 0 || localAge > 12) continue;
-                double radius = localAge * 0.35;
-                int points = 16;
+                int age = wave.age - ring * 3;
+                if (age < 0 || age > 12) continue;
+                double radius = age * 0.32;
+                int points = 18;
                 for (int i = 0; i < points; i++) {
-                    double a = (Math.PI * 2 * i) / points;
+                    double angle = Math.PI * 2.0 * i / points;
                     mc.world.addParticleClient(dust,
-                            w.x + Math.cos(a) * radius,
-                            w.y,
-                            w.z + Math.sin(a) * radius,
-                            0, 0.01, 0);
+                            wave.x + Math.cos(angle) * radius,
+                            wave.y + 0.03,
+                            wave.z + Math.sin(angle) * radius,
+                            0, 0.005, 0);
                 }
             }
-
-            if (w.age > 12 + maxWaves * 3) it.remove();
+            if (wave.age > 12 + maxWaves * 3) iterator.remove();
         }
     }
 
-    private static class Wave {
+    private static final class Wave {
         final double x, y, z;
         int age;
-
         Wave(double x, double y, double z) {
             this.x = x;
             this.y = y;
