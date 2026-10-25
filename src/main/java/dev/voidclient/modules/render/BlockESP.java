@@ -14,7 +14,9 @@ import net.minecraft.particle.DustParticleEffect;
 import net.minecraft.util.math.BlockPos;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /** Highlights selected blocks using refreshed corner markers and dotted tracer trails. */
 public class BlockESP extends Module {
@@ -39,6 +41,7 @@ public class BlockESP extends Module {
 
     private final List<BlockPos> found = new ArrayList<>();
     private final List<BlockPos> scanResults = new ArrayList<>();
+    private Set<Block> scanSelectedBlocks = Set.of();
     private int scanCursor;
     private int scanRange = -1;
     private String scanSelection = "";
@@ -76,6 +79,12 @@ public class BlockESP extends Module {
         if (scanCursor == 0) {
             scanResults.clear();
             scanOrigin = player.getBlockPos().toImmutable();
+            Set<Block> selectedBlocks = new HashSet<>();
+            Set<String> selectedIds = blocks.getSelectedIds();
+            for (BlockCatalog.Option option : BlockCatalog.OPTIONS) {
+                if (selectedIds.contains(option.id())) selectedBlocks.add(option.block());
+            }
+            scanSelectedBlocks = selectedBlocks;
         }
 
         int processed = 0;
@@ -107,10 +116,7 @@ public class BlockESP extends Module {
     }
 
     private boolean matches(Block block) {
-        for (BlockCatalog.Option option : BlockCatalog.OPTIONS) {
-            if (option.block() == block && blocks.isSelected(option.id())) return true;
-        }
-        return false;
+        return scanSelectedBlocks.contains(block);
     }
 
     private void spawnMarkers(MinecraftClient mc, ClientPlayerEntity player) {
