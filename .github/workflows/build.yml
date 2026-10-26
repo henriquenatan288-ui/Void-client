@@ -2,13 +2,59 @@ name: Build
 
 on:
   push:
-    branches: [ main, master, develop, 'fix/**' ]
+    branches: [ main, master, develop, 'fix/**', 'port/**' ]
   pull_request:
     branches: [ main, master ]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
+  migrate-mappings:
+    if: github.event_name == 'push' && startsWith(github.event.head_commit.message, '[migrate-mappings]') && github.ref == 'refs/heads/port/minecraft-26.2'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: 'gradle'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Bootstrap Gradle Wrapper (if needed)
+        run: |
+          if [ ! -f gradle/wrapper/gradle-wrapper.jar ]; then
+            gradle wrapper --gradle-version 9.2.0
+          fi
+          chmod +x gradlew
+
+      - name: Migrate Yarn source to Mojang mappings
+        run: ./gradlew migrateMappings --mappings "net.minecraft:mappings:1.21.11" --overrideInputsIHaveABackup --no-daemon --stacktrace
+
+      - name: Commit migrated source
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/main/java
+          if ! git diff --cached --quiet; then
+            git commit -m "[skip ci] Migrate Yarn source to Mojang mappings for 1.21.11"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          else
+            echo "No source changes were produced by migrateMappings."
+            exit 1
+          fi
+
   build:
+    if: github.event_name != 'push' || !startsWith(github.event.head_commit.message, '[migrate-mappings]')
     runs-on: ubuntu-latest
 
     steps:
