@@ -8,7 +8,7 @@ import dev.voidclient.gui.utils.RenderUtils;
 import java.util.List;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 
 public class SettingsPanel {
     public static final int WIDTH = 190;
@@ -44,7 +44,7 @@ public class SettingsPanel {
         return h + 6;
     }
 
-    public void render(GuiGraphics ctx, Font tr, int mouseX, int mouseY) {
+    public void render(GuiGraphicsExtractor ctx, Font tr, int mouseX, int mouseY) {
         if (!visible) return;
         int h = getHeight();
         int drawY = y + (int) ((1f - openAnim) * 8);
@@ -113,7 +113,7 @@ public class SettingsPanel {
         }
     }
 
-    private void drawToggle(GuiGraphics ctx, int tx, int ty, boolean on) {
+    private void drawToggle(GuiGraphicsExtractor ctx, int tx, int ty, boolean on) {
         RenderUtils.fillRounded(ctx, tx, ty, 20, 11, 5, on ? Theme.TOGGLE_ON : Theme.TOGGLE_OFF);
         int kx = on ? tx + 10 : tx + 2;
         RenderUtils.fillRounded(ctx, kx, ty + 2, 7, 7, 3,
@@ -179,7 +179,7 @@ public class SettingsPanel {
             } else if (setting instanceof BlockListSetting blockListSetting) {
                 if (RenderUtils.hovered((int) mouseX, (int) mouseY, x, cy - 2, WIDTH, 22)) {
                     Minecraft mc = Minecraft.getInstance();
-                    if (mc != null) mc.setScreen(new BlockSelectionScreen(mc.screen, blockListSetting));
+                    if (mc != null) mc.gui.setScreen(new BlockSelectionScreen(mc.gui.getScreen(), blockListSetting));
                     return true;
                 }
                 cy += rowHeight(setting);

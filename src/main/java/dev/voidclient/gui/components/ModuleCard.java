@@ -4,7 +4,7 @@ import dev.voidclient.core.Module;
 import dev.voidclient.gui.Theme;
 import dev.voidclient.gui.utils.RenderUtils;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 
 public class ModuleCard {
 
@@ -35,7 +35,7 @@ public class ModuleCard {
         else hoverAnim = Math.max(0f, hoverAnim - speed);
     }
 
-    public void render(GuiGraphics ctx, Font tr, int mouseX, int mouseY) {
+    public void render(GuiGraphicsExtractor ctx, Font tr, int mouseX, int mouseY) {
         int bg = RenderUtils.lerpColor(Theme.BG_CARD, Theme.BG_CARD_HOVER, hoverAnim);
         RenderUtils.drawCard(ctx, x, y, WIDTH, HEIGHT, 5, bg);
 
@@ -53,7 +53,7 @@ public class ModuleCard {
         drawToggle(ctx, x + WIDTH - 34, y + 11, module.isEnabled());
     }
 
-    private void drawToggle(GuiGraphics ctx, int tx, int ty, boolean on) {
+    private void drawToggle(GuiGraphicsExtractor ctx, int tx, int ty, boolean on) {
         RenderUtils.fillRounded(ctx, tx, ty, 22, 12, 6, on ? Theme.TOGGLE_ON : Theme.TOGGLE_OFF);
         int kx = on ? tx + 11 : tx + 2;
         RenderUtils.fillRounded(ctx, kx, ty + 2, 8, 8, 4, on ? Theme.TOGGLE_KNOB_ON : Theme.TOGGLE_KNOB_OFF);

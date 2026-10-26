@@ -6,7 +6,7 @@ import dev.voidclient.modules.render.BlockCatalog;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.List;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
@@ -45,7 +45,7 @@ public final class BlockSelectionScreen extends Screen {
     }
 
     @Override
-    public void render(GuiGraphics ctx, int mouseX, int mouseY, float delta) {
+    public void extractRenderState(GuiGraphicsExtractor ctx, int mouseX, int mouseY, float delta) {
         ctx.fill(0, 0, width, height, 0xC8000000);
 
         int x = panelX();
@@ -98,10 +98,10 @@ public final class BlockSelectionScreen extends Screen {
         drawButton(ctx, mouseX, mouseY, x + 235, footerY, 42, ">");
         drawButton(ctx, mouseX, mouseY, x + 281, footerY, 39, "DONE");
 
-        super.render(ctx, mouseX, mouseY, delta);
+        super.extractRenderState(ctx, mouseX, mouseY, delta);
     }
 
-    private void drawButton(GuiGraphics ctx, int mouseX, int mouseY, int x, int y, int w, String label) {
+    private void drawButton(GuiGraphicsExtractor ctx, int mouseX, int mouseY, int x, int y, int w, String label) {
         boolean hovered = RenderUtils.hovered(mouseX, mouseY, x, y, w, 17);
         RenderUtils.fillRounded(ctx, x, y, w, 17, 4, hovered ? Theme.BG_SELECTED : Theme.BG_CARD);
         RenderUtils.drawText(ctx, font, label, x + 5, y + 4, Theme.TEXT_PRIMARY, false);
@@ -187,7 +187,7 @@ public final class BlockSelectionScreen extends Screen {
 
     @Override
     public void onClose() {
-        if (minecraft != null) minecraft.setScreen(parent);
+        if (minecraft != null) minecraft.gui.setScreen(parent);
     }
 
     @Override
