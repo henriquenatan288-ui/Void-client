@@ -6,6 +6,7 @@ import dev.voidclient.core.Module;
 import dev.voidclient.core.setting.ColorSetting;
 import dev.voidclient.core.setting.NumberSetting;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.world.ClientWorld;
 import net.minecraft.particle.DustParticleEffect;
 import net.minecraft.util.math.BlockPos;
 
@@ -13,7 +14,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-/** Expanding rings triggered after the local client successfully breaks a block. */
+/** Expanding rings triggered when the locally tracked block changes to air. */
 public class BreakWaves extends Module {
     private final NumberSetting waves = addSetting(
             new NumberSetting("Waves", "Number of expanding rings", 3, 1, 6, 1));
@@ -21,31 +22,93 @@ public class BreakWaves extends Module {
             new ColorSetting("Color", "Wave color", 0xFFFFFFFF));
 
     private final List<Wave> active = new ArrayList<>();
+    private static BlockPos trackedTarget;
+    private static ClientWorld trackedWorld;
+    private static long targetTrackedAt = Long.MIN_VALUE;
 
     public BreakWaves() {
         super("BreakWaves", "Show expanding rings when you break a block.", Category.RENDER);
     }
 
-    public static void onClientBlockBreak(BlockPos pos) {
-        if (VoidClient.MODULE_MANAGER == null || pos == null) return;
+    /** Called by interaction-manager hooks while the local player is mining a block. */
+    public static void trackBlockBreakTarget(BlockPos pos) {
+        if (pos == null || VoidClient.MODULE_MANAGER == null) return;
         Module module = VoidClient.MODULE_MANAGER.getByName("BreakWaves");
-        if (module instanceof BreakWaves waves && waves.isEnabled()) {
-            waves.spawn(pos);
+        if (!(module instanceof BreakWaves breakWaves) || !breakWaves.isEnabled()) return;
+
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc.world == null) return;
+        trackedTarget = pos.toImmutable();
+        trackedWorld = mc.world;
+        targetTrackedAt = mc.world.getTime();
+    }
+
+    /**
+     * Called before ClientWorld applies a block-state update. This catches survival mining
+     * too, where the server confirms the break asynchronously rather than in breakBlock().
+     */
+    public static void onClientBlockChangedToAir(BlockPos pos) {
+        if (pos == null || trackedTarget == null || !trackedTarget.equals(pos)) return;
+
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc.world == null || mc.world != trackedWorld) {
+            clearTrackedTarget();
+            return;
         }
+
+        long age = mc.world.getTime() - targetTrackedAt;
+        if (age < 0 || age > 40) {
+            clearTrackedTarget();
+            return;
+        }
+
+        Module module = VoidClient.MODULE_MANAGER == null
+                ? null : VoidClient.MODULE_MANAGER.getByName("BreakWaves");
+        if (module instanceof BreakWaves breakWaves && breakWaves.isEnabled()) {
+            breakWaves.spawn(pos);
+        }
+        clearTrackedTarget();
+    }
+
+    private static void clearTrackedTarget() {
+        trackedTarget = null;
+        trackedWorld = null;
+        targetTrackedAt = Long.MIN_VALUE;
     }
 
     private void spawn(BlockPos pos) {
         if (active.size() >= 12) active.remove(0);
         active.add(new Wave(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5));
+        VoidClient.LOGGER.debug("BreakWaves: created wave at {}", pos);
+    }
+
+    @Override
+    protected void onEnable() {
+        active.clear();
+        clearTrackedTarget();
+        VoidClient.LOGGER.debug("BreakWaves enabled");
+    }
+
+    @Override
+    protected void onDisable() {
+        active.clear();
+        clearTrackedTarget();
     }
 
     @Override
     public void onTick() {
         MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc.world == null) {
+        if (mc.world == null || mc.player == null) {
             active.clear();
+            clearTrackedTarget();
             return;
         }
+
+        if (trackedTarget != null && (trackedWorld != mc.world
+                || mc.world.getTime() - targetTrackedAt > 40)) {
+            clearTrackedTarget();
+        }
+        if (active.isEmpty()) return;
 
         DustParticleEffect dust = new DustParticleEffect(color.getRgb(), 0.9f);
         int maxWaves = waves.getInt();
@@ -61,7 +124,7 @@ public class BreakWaves extends Module {
                 int points = 18;
                 for (int i = 0; i < points; i++) {
                     double angle = Math.PI * 2.0 * i / points;
-                    mc.world.addParticleClient(dust,
+                    mc.world.addParticleClient(dust, true, true,
                             wave.x + Math.cos(angle) * radius,
                             wave.y + 0.03,
                             wave.z + Math.sin(angle) * radius,
