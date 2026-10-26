@@ -12,8 +12,10 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * 26.2 Mojang names:
- * update(Level, Entity, boolean thirdPerson, boolean inverseView, float tickProgress)
+ * 26.2: Camera.update(Level, Entity, boolean thirdPerson, boolean inverseView, float tickProgress)
+ *
+ * Certainty: apply rotation + freecam position AFTER vanilla finishes (RETURN),
+ * otherwise third-person offset or vanilla setRotation wins the frame.
  */
 @Mixin(Camera.class)
 public abstract class CameraMixin {
@@ -27,7 +29,7 @@ public abstract class CameraMixin {
     )
     private void voidclient$redirectCameraRotation(Camera camera, float vanillaYaw, float vanillaPitch) {
         CameraInvoker invoker = (CameraInvoker) (Object) camera;
-        if (CameraControl.isFreecamActive() || CameraControl.isFreelookActive()) {
+        if (CameraControl.isDetachedLook()) {
             invoker.voidclient$setRotation(CameraControl.getYaw(), CameraControl.getPitch());
         } else {
             invoker.voidclient$setRotation(vanillaYaw, vanillaPitch);
@@ -35,17 +37,25 @@ public abstract class CameraMixin {
     }
 
     @Inject(method = UPDATE, at = @At("RETURN"), require = 0)
-    private void voidclient$overrideFreecamPosition(
+    private void voidclient$overrideDetachedCamera(
             Level world,
             Entity focusedEntity,
             boolean thirdPerson,
             boolean inverseView,
             float tickProgress,
             CallbackInfo ci) {
-        if (!CameraControl.isFreecamActive()) return;
-        Vec3 pos = CameraControl.interpolatedPosition(tickProgress);
         CameraInvoker invoker = (CameraInvoker) (Object) this;
-        invoker.voidclient$setPos(pos);
-        invoker.voidclient$setRotation(CameraControl.getYaw(), CameraControl.getPitch());
+
+        if (CameraControl.isFreecamActive()) {
+            Vec3 pos = CameraControl.interpolatedPosition(tickProgress);
+            invoker.voidclient$setPos(pos);
+            invoker.voidclient$setRotation(CameraControl.getYaw(), CameraControl.getPitch());
+            return;
+        }
+
+        if (CameraControl.isFreelookActive()) {
+            // Keep vanilla third-person position; only own the rotation
+            invoker.voidclient$setRotation(CameraControl.getYaw(), CameraControl.getPitch());
+        }
     }
 }
