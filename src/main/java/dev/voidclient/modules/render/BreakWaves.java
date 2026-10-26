@@ -40,7 +40,7 @@ public class BreakWaves extends Module {
         if (mc.world == null) return;
         BlockPos immutablePos = pos.toImmutable();
         if (!immutablePos.equals(trackedTarget) || trackedWorld != mc.world) {
-            VoidClient.LOGGER.debug("BreakWaves tracking mining target {}", immutablePos);
+            VoidClient.LOGGER.info("BreakWaves tracking mining target {}", immutablePos);
         }
         trackedTarget = immutablePos;
         trackedWorld = mc.world;
@@ -61,7 +61,7 @@ public class BreakWaves extends Module {
         }
 
         long age = mc.world.getTime() - targetTrackedAt;
-        VoidClient.LOGGER.debug("BreakWaves saw air update at tracked block {}, age={} ticks", pos, age);
+        VoidClient.LOGGER.info("BreakWaves saw air update at tracked block {}, age={} ticks", pos, age);
         if (age < 0 || age > 40) {
             clearTrackedTarget();
             return;
@@ -84,14 +84,14 @@ public class BreakWaves extends Module {
     private void spawn(BlockPos pos) {
         if (active.size() >= 4) active.remove(0);
         active.add(new Wave(pos.getX() + 0.5, pos.getY() + 0.05, pos.getZ() + 0.5));
-        VoidClient.LOGGER.debug("BreakWaves: created wave at {}", pos);
+        VoidClient.LOGGER.info("BreakWaves: created wave at {}", pos);
     }
 
     @Override
     protected void onEnable() {
         active.clear();
         clearTrackedTarget();
-        VoidClient.LOGGER.debug("BreakWaves enabled");
+        VoidClient.LOGGER.info("BreakWaves enabled");
     }
 
     @Override
