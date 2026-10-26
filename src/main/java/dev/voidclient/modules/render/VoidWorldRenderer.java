@@ -21,7 +21,7 @@ public final class VoidWorldRenderer {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc.player == null || mc.world == null || mc.gameRenderer == null) return;
         Camera camera = mc.gameRenderer.getCamera();
-        Vec3d cameraPos = camera.getPos();
+        Vec3d cameraPos = camera.getCameraPos();
         VertexConsumer vertices = context.consumers().getBuffer(RenderLayers.lines());
 
         Module playerEspModule = VoidClient.MODULE_MANAGER == null ? null
