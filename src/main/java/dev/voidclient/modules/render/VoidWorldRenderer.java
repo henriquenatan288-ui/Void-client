@@ -21,7 +21,7 @@ public final class VoidWorldRenderer {
         if (mc.player == null || mc.world == null || mc.gameRenderer == null) return;
         Camera camera = mc.gameRenderer.getCamera();
         Vec3d cameraPos = camera.getCameraPos();
-        float tickProgress = context.tickCounter().getTickProgress(false);
+        float tickProgress = mc.getRenderTickCounter().getTickProgress(false);
         VertexConsumer vertices = context.consumers().getBuffer(VoidRenderLayers.ESP_LINES);
 
         Module playerEspModule = VoidClient.MODULE_MANAGER == null ? null
@@ -31,7 +31,7 @@ public final class VoidWorldRenderer {
             for (AbstractClientPlayerEntity target : playerEsp.getTargets()) {
                 Vec3d interpolatedPos = target.getLerpedPos(tickProgress);
                 Box interpolatedBox = target.getBoundingBox()
-                        .offset(interpolatedPos.subtract(target.getPos()));
+                        .offset(interpolatedPos.subtract(target.getEntityPos()));
                 drawBox(vertices, interpolatedBox, cameraPos, color);
             }
         }
