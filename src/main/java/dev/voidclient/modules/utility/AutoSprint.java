@@ -5,7 +5,7 @@ import dev.voidclient.core.Module;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 
-/** Sprints automatically when moving forward. */
+/** Sprints automatically when moving. */
 public class AutoSprint extends Module {
     public AutoSprint() {
         super("AutoSprint", "Sprint automatically while moving forward.", Category.UTILITY);
@@ -16,10 +16,18 @@ public class AutoSprint extends Module {
         Minecraft mc = Minecraft.getInstance();
         LocalPlayer p = mc.player;
         if (p == null) return;
-        if (p.input == null) return;
-        boolean forward = p.input.getMoveVector().y > 0.01f
-                || (mc.options != null && mc.options.keyUp.isDown());
-        if (forward && !p.isSprinting() && !p.isCrouching() && p.getFoodData().getFoodLevel() > 6) {
+        if (p.isCrouching()) return;
+        if (p.getFoodData().getFoodLevel() <= 6) return;
+
+        boolean forward = false;
+        try {
+            if (mc.options != null && mc.options.keyUp.isDown()) forward = true;
+        } catch (Throwable ignored) {}
+        try {
+            if (p.input != null && p.input.getMoveVector().y > 0.01f) forward = true;
+        } catch (Throwable ignored) {}
+
+        if (forward && !p.isSprinting()) {
             p.setSprinting(true);
         }
     }
