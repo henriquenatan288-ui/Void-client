@@ -1,5 +1,6 @@
 package dev.voidclient.mixin;
 
+import dev.voidclient.freecam.FreecamController;
 import dev.voidclient.modules.render.CameraControl;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.Entity;
@@ -14,8 +15,15 @@ public abstract class EntityLookMixin {
     private void voidclient$redirectCameraLook(double cursorDeltaX, double cursorDeltaY, CallbackInfo ci) {
         Minecraft client = Minecraft.getInstance();
         if (client.player == null || (Object) this != client.player) return;
-        if (!CameraControl.isFreecamActive() && !CameraControl.isFreelookActive()) return;
-        CameraControl.updateLook(cursorDeltaX, cursorDeltaY);
-        ci.cancel();
+
+        if (FreecamController.isActive()) {
+            FreecamController.look(cursorDeltaX, cursorDeltaY);
+            ci.cancel();
+            return;
+        }
+        if (CameraControl.isFreelookActive()) {
+            CameraControl.updateLook(cursorDeltaX, cursorDeltaY);
+            ci.cancel();
+        }
     }
 }
