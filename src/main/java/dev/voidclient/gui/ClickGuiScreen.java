@@ -69,11 +69,11 @@ public class ClickGuiScreen extends Screen {
         RenderUtils.fill(context, 0, 0, width, height, (overlayAlpha << 24));
 
         int sx = sidebarOffset;
-        RenderUtils.fill(context, sx, 0, SIDEBAR_W, height, Theme.BG_SIDEBAR);
-        RenderUtils.fill(context, sx + SIDEBAR_W - 1, 0, 1, height, Theme.BORDER);
+        RenderUtils.fill(context, sx, 0, SIDEBAR_W, height, Theme.BG_SIDEBAR());
+        RenderUtils.fill(context, sx + SIDEBAR_W - 1, 0, 1, height, Theme.BORDER());
 
-        RenderUtils.drawText(context, font, "VOID", sx + 14, 18, Theme.TEXT_PRIMARY, false);
-        RenderUtils.drawText(context, font, "CLIENT", sx + 14, 30, Theme.TEXT_MUTED, false);
+        RenderUtils.drawText(context, font, "VOID", sx + 14, 18, Theme.TEXT_PRIMARY(), false);
+        RenderUtils.drawText(context, font, "CLIENT", sx + 14, 30, Theme.TEXT_MUTED(), false);
 
         int cy = 56;
         for (Category cat : Category.values()) {
@@ -81,13 +81,13 @@ public class ClickGuiScreen extends Screen {
             boolean hov = RenderUtils.hovered(mouseX, mouseY, sx + 8, cy, SIDEBAR_W - 16, 22);
 
             if (sel) {
-                RenderUtils.fillRounded(context, sx + 8, cy, SIDEBAR_W - 16, 22, 4, Theme.BG_SELECTED);
-                RenderUtils.fill(context, sx + 8, cy + 5, 2, 12, Theme.ACCENT);
+                RenderUtils.fillRounded(context, sx + 8, cy, SIDEBAR_W - 16, 22, 4, Theme.BG_SELECTED());
+                RenderUtils.fill(context, sx + 8, cy + 5, 2, 12, Theme.ACCENT());
             } else if (hov) {
-                RenderUtils.fillRounded(context, sx + 8, cy, SIDEBAR_W - 16, 22, 4, Theme.BG_CARD);
+                RenderUtils.fillRounded(context, sx + 8, cy, SIDEBAR_W - 16, 22, 4, Theme.BG_CARD());
             }
 
-            int col = sel ? Theme.TEXT_PRIMARY : Theme.TEXT_SECONDARY;
+            int col = sel ? Theme.TEXT_PRIMARY() : Theme.TEXT_SECONDARY();
             RenderUtils.drawText(context, font, cat.getDisplayName(), sx + 18, cy + 7, col, false);
             cy += 26;
         }
@@ -95,7 +95,7 @@ public class ClickGuiScreen extends Screen {
         int contentX = SIDEBAR_W + PAD;
         int contentY = PAD + 6 - contentFade;
 
-        RenderUtils.drawText(context, font, selected.getDisplayName(), contentX, contentY, Theme.TEXT_PRIMARY, false);
+        RenderUtils.drawText(context, font, selected.getDisplayName(), contentX, contentY, Theme.TEXT_PRIMARY(), false);
 
         int startY = contentY + 22;
         int col = 0;
@@ -117,7 +117,7 @@ public class ClickGuiScreen extends Screen {
         }
 
         if (cards.isEmpty()) {
-            RenderUtils.drawText(context, font, "No modules here yet", contentX, startY + 12, Theme.TEXT_MUTED, false);
+            RenderUtils.drawText(context, font, "No modules here yet", contentX, startY + 12, Theme.TEXT_MUTED(), false);
         }
 
         if (settingsPanel != null && settingsPanel.isVisible()) {
@@ -127,7 +127,7 @@ public class ClickGuiScreen extends Screen {
 
         RenderUtils.drawText(context, font,
                 "RShift close  |  LMB toggle  |  RMB settings",
-                contentX, height - 14, Theme.TEXT_MUTED, false);
+                contentX, height - 14, Theme.TEXT_MUTED(), false);
     }
 
     @Override
