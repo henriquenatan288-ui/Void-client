@@ -6,7 +6,7 @@ import dev.voidclient.core.setting.BooleanSetting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.entity.player.Inventory;
-import net.minecraft.world.inventory.ClickType;
+import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
@@ -48,15 +48,15 @@ public class AutoTotem extends Module {
         int containerSlot = slot < 9 ? slot + 36 : slot;
 
         // Pick up totem
-        mc.gameMode.handleInventoryMouseClick(
-                p.inventoryMenu.containerId, containerSlot, 0, ClickType.PICKUP, p);
+        mc.gameMode.handleContainerInput(
+                p.inventoryMenu.containerId, containerSlot, 0, ContainerInput.PICKUP, p);
         // Place in offhand (slot 45)
-        mc.gameMode.handleInventoryMouseClick(
-                p.inventoryMenu.containerId, 45, 0, ClickType.PICKUP, p);
+        mc.gameMode.handleContainerInput(
+                p.inventoryMenu.containerId, 45, 0, ContainerInput.PICKUP, p);
         // Put back whatever was in cursor
         if (!p.containerMenu.getCarried().isEmpty()) {
-            mc.gameMode.handleInventoryMouseClick(
-                    p.inventoryMenu.containerId, containerSlot, 0, ClickType.PICKUP, p);
+            mc.gameMode.handleContainerInput(
+                    p.inventoryMenu.containerId, containerSlot, 0, ContainerInput.PICKUP, p);
         }
     }
 }
