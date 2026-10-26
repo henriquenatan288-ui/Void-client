@@ -14,7 +14,10 @@
     "EntityLookMixin",
     "InputAccessor",
     "InputMixin",
-    "PlayerOutlineMixin"
+    "PlayerOutlineMixin",
+    "ClientWorldMixin"
   ],
-  "injectors": { "defaultRequire": 1 }
+  "injectors": {
+    "defaultRequire": 1
+  }
 }
