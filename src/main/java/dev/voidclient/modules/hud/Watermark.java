@@ -5,12 +5,11 @@ import dev.voidclient.core.Category;
 import dev.voidclient.core.Module;
 import dev.voidclient.core.setting.ColorSetting;
 import dev.voidclient.core.setting.NumberSetting;
+import dev.voidclient.modules.personalization.HudTheme;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 
-/**
- * Void Client watermark on screen.
- */
+/** Void Client watermark on screen. */
 public class Watermark extends Module {
 
     private final NumberSetting x = addSetting(
@@ -30,6 +29,7 @@ public class Watermark extends Module {
         if (mc.font == null) return;
 
         String text = "Void Client " + VoidClient.VERSION + " §7| §fbisteck";
-        ctx.text(mc.font, text, x.getInt(), y.getInt(), color.get(), true);
+        int drawColor = HudTheme.resolve(color.get());
+        ctx.text(mc.font, text, x.getInt(), y.getInt(), drawColor, true);
     }
 }
