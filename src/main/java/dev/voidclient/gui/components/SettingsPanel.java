@@ -49,19 +49,19 @@ public class SettingsPanel {
         int h = getHeight();
         int drawY = y + (int) ((1f - openAnim) * 8);
 
-        RenderUtils.drawPanel(ctx, x, drawY, WIDTH, h, 6, Theme.BG_PANEL);
-        RenderUtils.drawText(ctx, tr, module.getName(), x + 8, drawY + 8, Theme.TEXT_PRIMARY, false);
-        RenderUtils.drawText(ctx, tr, "x", x + WIDTH - 14, drawY + 7, Theme.TEXT_SECONDARY, false);
+        RenderUtils.drawPanel(ctx, x, drawY, WIDTH, h, 6, Theme.BG_PANEL());
+        RenderUtils.drawText(ctx, tr, module.getName(), x + 8, drawY + 8, Theme.TEXT_PRIMARY(), false);
+        RenderUtils.drawText(ctx, tr, "x", x + WIDTH - 14, drawY + 7, Theme.TEXT_SECONDARY(), false);
 
         int cy = drawY + 26;
         List<Setting<?>> settings = module.getSettings();
         if (settings.isEmpty()) {
-            RenderUtils.drawText(ctx, tr, "No settings", x + 8, cy, Theme.TEXT_MUTED, false);
+            RenderUtils.drawText(ctx, tr, "No settings", x + 8, cy, Theme.TEXT_MUTED(), false);
             return;
         }
 
         for (Setting<?> setting : settings) {
-            RenderUtils.drawText(ctx, tr, setting.getName(), x + 8, cy, Theme.TEXT_SECONDARY, false);
+            RenderUtils.drawText(ctx, tr, setting.getName(), x + 8, cy, Theme.TEXT_SECONDARY(), false);
 
             if (setting instanceof BooleanSetting booleanSetting) {
                 drawToggle(ctx, x + WIDTH - 30, cy - 1, booleanSetting.get());
@@ -72,22 +72,22 @@ public class SettingsPanel {
                         : String.format(java.util.Locale.ROOT, "%.1f", numberSetting.get());
                 RenderUtils.drawText(ctx, tr, value,
                         x + WIDTH - RenderUtils.textWidth(tr, value) - 8, cy,
-                        Theme.TEXT_PRIMARY, false);
+                        Theme.TEXT_PRIMARY(), false);
                 int barX = x + 8, barY = cy + 12, barW = WIDTH - 16;
-                RenderUtils.fillRounded(ctx, barX, barY, barW, 3, 1, Theme.SLIDER_TRACK);
+                RenderUtils.fillRounded(ctx, barX, barY, barW, 3, 1, Theme.SLIDER_TRACK());
                 double pct = (numberSetting.get() - numberSetting.getMin())
                         / Math.max(0.0001, numberSetting.getMax() - numberSetting.getMin());
                 RenderUtils.fillRounded(ctx, barX, barY,
-                        Math.max(2, (int) (barW * pct)), 3, 1, Theme.SLIDER_FILL);
+                        Math.max(2, (int) (barW * pct)), 3, 1, Theme.SLIDER_FILL());
                 cy += rowHeight(setting);
             } else if (setting instanceof ModeSetting modeSetting) {
                 String mode = modeSetting.get();
                 RenderUtils.drawText(ctx, tr, mode,
                         x + WIDTH - RenderUtils.textWidth(tr, mode) - 8, cy,
-                        Theme.TEXT_PRIMARY, false);
+                        Theme.TEXT_PRIMARY(), false);
                 cy += rowHeight(setting);
             } else if (setting instanceof ColorSetting colorSetting) {
-                RenderUtils.drawText(ctx, tr, "Palette", x + 8, cy + 10, Theme.TEXT_MUTED, false);
+                RenderUtils.drawText(ctx, tr, "Palette", x + 8, cy + 10, Theme.TEXT_MUTED(), false);
                 int swatchX = x + 70;
                 int swatchY = cy + 8;
                 for (int i = 0; i < ColorSetting.paletteSize(); i++) {
@@ -95,7 +95,7 @@ public class SettingsPanel {
                     boolean selected = ColorSetting.paletteColor(i) == colorSetting.get();
                     RenderUtils.fillRounded(ctx, sx, swatchY, 10, 10, 3, ColorSetting.paletteColor(i));
                     RenderUtils.outline(ctx, sx, swatchY, 10, 10,
-                            selected ? Theme.TEXT_PRIMARY : Theme.BORDER);
+                            selected ? Theme.TEXT_PRIMARY() : Theme.BORDER());
                 }
                 cy += rowHeight(setting);
             } else if (setting instanceof BlockListSetting blockListSetting) {
@@ -103,9 +103,9 @@ public class SettingsPanel {
                 int buttonX = x + WIDTH - 78;
                 RenderUtils.fillRounded(ctx, buttonX, cy - 2, 70, 16, 4,
                         RenderUtils.hovered(mouseX, mouseY, buttonX, cy - 2, 70, 16)
-                                ? Theme.BG_SELECTED : Theme.BG_CARD);
+                                ? Theme.BG_SELECTED() : Theme.BG_CARD());
                 RenderUtils.drawText(ctx, tr, label, buttonX + 5, cy + 2,
-                        Theme.TEXT_PRIMARY, false);
+                        Theme.TEXT_PRIMARY(), false);
                 cy += rowHeight(setting);
             } else {
                 cy += rowHeight(setting);
@@ -114,10 +114,10 @@ public class SettingsPanel {
     }
 
     private void drawToggle(GuiGraphicsExtractor ctx, int tx, int ty, boolean on) {
-        RenderUtils.fillRounded(ctx, tx, ty, 20, 11, 5, on ? Theme.TOGGLE_ON : Theme.TOGGLE_OFF);
+        RenderUtils.fillRounded(ctx, tx, ty, 20, 11, 5, on ? Theme.TOGGLE_ON() : Theme.TOGGLE_OFF());
         int kx = on ? tx + 10 : tx + 2;
         RenderUtils.fillRounded(ctx, kx, ty + 2, 7, 7, 3,
-                on ? Theme.TOGGLE_KNOB_ON : Theme.TOGGLE_KNOB_OFF);
+                on ? Theme.TOGGLE_KNOB_ON() : Theme.TOGGLE_KNOB_OFF());
     }
 
     public boolean mouseClicked(double mouseX, double mouseY, int button, Font tr) {
@@ -138,7 +138,6 @@ public class SettingsPanel {
                 if (RenderUtils.hovered((int) mouseX, (int) mouseY,
                         x + WIDTH - 30, cy - 1, 20, 11)) {
                     booleanSetting.toggle();
-                    
                     return true;
                 }
                 cy += rowHeight(setting);
@@ -148,14 +147,12 @@ public class SettingsPanel {
                     double pct = Math.max(0, Math.min(1, (mouseX - barX) / (double) barW));
                     numberSetting.set(numberSetting.getMin()
                             + pct * (numberSetting.getMax() - numberSetting.getMin()));
-                    
                     return true;
                 }
                 cy += rowHeight(setting);
             } else if (setting instanceof ModeSetting modeSetting) {
                 if (RenderUtils.hovered((int) mouseX, (int) mouseY, x, cy, WIDTH, 16)) {
                     modeSetting.cycle();
-                    
                     return true;
                 }
                 cy += rowHeight(setting);
@@ -166,20 +163,20 @@ public class SettingsPanel {
                     int sx = swatchX + i * 12;
                     if (RenderUtils.hovered((int) mouseX, (int) mouseY, sx, swatchY, 10, 10)) {
                         colorSetting.set(ColorSetting.paletteColor(i));
-                        
                         return true;
                     }
                 }
                 if (RenderUtils.hovered((int) mouseX, (int) mouseY, x, cy, WIDTH, rowHeight(setting))) {
                     colorSetting.cyclePalette();
-                    
                     return true;
                 }
                 cy += rowHeight(setting);
-            } else if (setting instanceof BlockListSetting blockListSetting) {
+            } else if (setting instanceof BlockListSetting) {
                 if (RenderUtils.hovered((int) mouseX, (int) mouseY, x, cy - 2, WIDTH, 22)) {
                     Minecraft mc = Minecraft.getInstance();
-                    if (mc != null) mc.gui.setScreen(new BlockSelectionScreen(mc.gui.screen(), blockListSetting));
+                    if (mc != null) {
+                        mc.gui.setScreen(new BlockSelectionScreen(mc.gui.screen(), (BlockListSetting) setting));
+                    }
                     return true;
                 }
                 cy += rowHeight(setting);
