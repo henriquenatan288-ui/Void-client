@@ -6,12 +6,10 @@ import dev.voidclient.core.setting.NumberSetting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.InteractionHand;
-import net.minecraft.world.food.FoodProperties;
 import net.minecraft.world.item.ItemStack;
 
 /**
- * Eats food when hunger is low.
- * NoSlow is handled by InputMixin while this module is enabled and using food.
+ * Eats food when hunger is low. NoSlow while eating via InputMixin.
  */
 public class AutoEat extends Module {
     private final NumberSetting hunger = addSetting(
@@ -55,14 +53,20 @@ public class AutoEat extends Module {
             return;
         }
 
-        // Prefer main hand food, then offhand, then hotbar search
         if (tryUse(p, InteractionHand.MAIN_HAND)) return;
         if (tryUse(p, InteractionHand.OFF_HAND)) return;
 
         for (int i = 0; i < 9; i++) {
             ItemStack stack = p.getInventory().getItem(i);
             if (!isFood(stack)) continue;
-            p.getInventory().setSelectedSlot(i);
+            try {
+                p.getInventory().setSelectedSlot(i);
+            } catch (Throwable t) {
+                try {
+                    // fallback if method name differs
+                    p.getInventory().selected = i;
+                } catch (Throwable ignored) {}
+            }
             mc.gameMode.useItem(p, InteractionHand.MAIN_HAND);
             eating = true;
             return;
@@ -88,7 +92,11 @@ public class AutoEat extends Module {
 
     private static boolean isFood(ItemStack stack) {
         if (stack == null || stack.isEmpty()) return false;
-        FoodProperties food = stack.get(net.minecraft.core.component.DataComponents.FOOD);
-        return food != null;
+        try {
+            return stack.get(net.minecraft.core.component.DataComponents.FOOD) != null;
+        } catch (Throwable t) {
+            // Fallback: edible check via item components failure
+            return false;
+        }
     }
 }
