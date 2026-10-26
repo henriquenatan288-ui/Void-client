@@ -9,7 +9,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-/** Tracks all local mining paths; survival block-state confirmation is handled by ClientWorldMixin. */
+/** Tracks local mining; BreakWaves only fires on downward breaks. */
 @Mixin(MultiPlayerGameMode.class)
 public abstract class ClientPlayerInteractionManagerMixin {
     @Inject(
@@ -18,7 +18,7 @@ public abstract class ClientPlayerInteractionManagerMixin {
     )
     private void voidclient$trackInitialBlockAttack(
             BlockPos pos, Direction direction, CallbackInfoReturnable<Boolean> cir) {
-        BreakWaves.trackBlockBreakTarget(pos);
+        BreakWaves.trackBlockBreakTarget(pos, direction);
     }
 
     @Inject(
@@ -27,7 +27,7 @@ public abstract class ClientPlayerInteractionManagerMixin {
     )
     private void voidclient$trackContinuousBlockBreaking(
             BlockPos pos, Direction direction, CallbackInfoReturnable<Boolean> cir) {
-        BreakWaves.trackBlockBreakTarget(pos);
+        BreakWaves.trackBlockBreakTarget(pos, direction);
     }
 
     @Inject(
@@ -36,8 +36,6 @@ public abstract class ClientPlayerInteractionManagerMixin {
     )
     private void voidclient$trackImmediateBlockBreak(
             BlockPos pos, CallbackInfoReturnable<Boolean> cir) {
-        // Creative and other immediate break paths may skip the continuous progress method.
         BreakWaves.trackBlockBreakTarget(pos);
     }
-
 }
