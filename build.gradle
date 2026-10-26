@@ -18,9 +18,9 @@ dependencies {
     // Minecraft 26.2 is unobfuscated — do NOT use loom.officialMojangMappings()
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
 
-    // Fabric Loader + API
-    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
-    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+    // Fabric Loader + API (implementation, not modImplementation on Loom 1.19 non-obf)
+    implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
 }
 
 processResources {
