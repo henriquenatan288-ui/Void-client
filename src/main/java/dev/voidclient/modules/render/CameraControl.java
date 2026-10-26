@@ -4,10 +4,11 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Shared detached camera state for Freecam and Freelook.
+ * Detached camera state for Freecam / Freelook.
  *
- * Certainty: yaw/pitch/pos live here; CameraMixin applies them to net.minecraft.client.Camera.
- * Hypothesis: if look still fails on mobile, touch deltas may not reach Entity.turn — confirm with log in updateLook.
+ * Mobile (Pojav): touch often writes yaw/pitch straight onto the player instead of
+ * calling Entity.turn. We sample player rotation each tick, feed the delta into
+ * the virtual camera, then snap the player body back.
  */
 public final class CameraControl {
     private static boolean freelookActive;
@@ -19,6 +20,11 @@ public final class CameraControl {
     private static Vec3 cameraPos = Vec3.ZERO;
     private static float cameraYaw;
     private static float cameraPitch;
+
+    /** Body rotation frozen while detached look is active. */
+    private static float lockedBodyYaw;
+    private static float lockedBodyPitch;
+    private static boolean bodyLocked;
 
     private CameraControl() {}
 
@@ -33,31 +39,43 @@ public final class CameraControl {
     public static void startFreelook(LocalPlayer player) {
         freelookYaw = player.getYRot();
         freelookPitch = player.getXRot();
+        lockBody(player);
         freelookActive = true;
     }
 
     public static void stopFreelook() {
         freelookActive = false;
+        if (!freecamActive) bodyLocked = false;
     }
 
     public static void startFreecam(LocalPlayer player) {
-        // Eye position = where first-person camera sits
         cameraPos = player.getEyePosition(1.0F);
         previousCameraPos = cameraPos;
         cameraYaw = player.getYRot();
         cameraPitch = player.getXRot();
+        lockBody(player);
         freecamActive = true;
     }
 
     public static void stopFreecam() {
         freecamActive = false;
+        if (!freelookActive) bodyLocked = false;
     }
 
-    /** Called from EntityLookMixin when player turn is cancelled. */
+    private static void lockBody(LocalPlayer player) {
+        lockedBodyYaw = player.getYRot();
+        lockedBodyPitch = player.getXRot();
+        bodyLocked = true;
+    }
+
+    /** From EntityLookMixin when turn() is used (desktop / some loaders). */
     public static void updateLook(double deltaX, double deltaY) {
-        // Vanilla-ish sensitivity; mobile touch often sends larger deltas
         float yawDelta = (float) deltaX * 0.15F;
         float pitchDelta = (float) deltaY * 0.15F;
+        applyLookDelta(yawDelta, pitchDelta);
+    }
+
+    private static void applyLookDelta(float yawDelta, float pitchDelta) {
         if (freecamActive) {
             cameraYaw += yawDelta;
             cameraPitch = clamp(cameraPitch + pitchDelta, -90.0F, 90.0F);
@@ -67,20 +85,44 @@ public final class CameraControl {
         }
     }
 
+    /**
+     * Call every tick while detached. Captures touch-driven player rotation,
+     * moves virtual camera, restores body facing.
+     */
+    public static void tickCapturePlayerLook(LocalPlayer player) {
+        if (!isDetachedLook() || player == null || !bodyLocked) return;
+
+        float py = player.getYRot();
+        float pp = player.getXRot();
+        float dyaw = py - lockedBodyYaw;
+        float dpitch = pp - lockedBodyPitch;
+
+        // Normalize yaw delta to [-180, 180]
+        while (dyaw > 180f) dyaw -= 360f;
+        while (dyaw < -180f) dyaw += 360f;
+
+        if (Math.abs(dyaw) > 0.001f || Math.abs(dpitch) > 0.001f) {
+            applyLookDelta(dyaw, dpitch);
+        }
+
+        player.setYRot(lockedBodyYaw);
+        player.setXRot(lockedBodyPitch);
+        player.setYHeadRot(lockedBodyYaw);
+        try {
+            player.setYBodyRot(lockedBodyYaw);
+        } catch (Throwable ignored) {}
+    }
+
     public static void moveCamera(double forward, double strafe, double vertical, float speed) {
         if (!freecamActive) return;
         previousCameraPos = cameraPos;
 
         double yaw = Math.toRadians(cameraYaw);
         double pitch = Math.toRadians(cameraPitch);
-
-        // Look vector from yaw/pitch (MC convention)
         double lx = -Math.sin(yaw) * Math.cos(pitch);
         double ly = -Math.sin(pitch);
         double lz = Math.cos(yaw) * Math.cos(pitch);
         Vec3 look = new Vec3(lx, ly, lz);
-
-        // Horizontal right vector
         Vec3 right = new Vec3(Math.cos(yaw), 0.0, Math.sin(yaw));
 
         Vec3 movement = look.scale(forward).add(right.scale(strafe)).add(0.0, vertical, 0.0);
