@@ -25,8 +25,8 @@ public class ChestStealer extends Module {
     public void onTick() {
         Minecraft mc = Minecraft.getInstance();
         LocalPlayer p = mc.player;
-        if (p == null || mc.gameMode == null) return;
-        if (mc.screen == null) return;
+        if (p == null || mc.gameMode == null || mc.gui == null) return;
+        if (mc.gui.screen() == null) return;
 
         AbstractContainerMenu menu = p.containerMenu;
         if (!(menu instanceof ChestMenu chest)) return;
