@@ -1,7 +1,7 @@
 package dev.voidclient.mixin;
 
 import dev.voidclient.freecam.FreecamController;
-import dev.voidclient.modules.render.CameraControl;
+import dev.voidclient.freelook.FreelookController;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.Entity;
 import org.spongepowered.asm.mixin.Mixin;
@@ -21,8 +21,8 @@ public abstract class EntityLookMixin {
             ci.cancel();
             return;
         }
-        if (CameraControl.isFreelookActive()) {
-            CameraControl.updateLook(cursorDeltaX, cursorDeltaY);
+        if (FreelookController.isActive()) {
+            FreelookController.look(cursorDeltaX, cursorDeltaY);
             ci.cancel();
         }
     }
