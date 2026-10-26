@@ -3,34 +3,32 @@ package dev.voidclient.gui;
 import dev.voidclient.modules.personalization.GuiTheme;
 
 /**
- * Black & white modern theme for Void Client ClickGUI.
- * Values can be overridden live by the GuiTheme (Personalization) module.
+ * Theme for Void Client ClickGUI — dark glass defaults, overridable by GuiTheme.
  */
 public final class Theme {
 
     private Theme() {}
 
-    // Fallbacks when GuiTheme is not loaded
     private static final int DEF_BG_OVERLAY     = 0xB0000000;
-    private static final int DEF_BG_SIDEBAR     = 0xF00A0A0A;
-    private static final int DEF_BG_PANEL       = 0xF0101010;
-    private static final int DEF_BG_CARD        = 0xF0141414;
-    private static final int DEF_BG_CARD_HOVER  = 0xF01C1C1C;
-    private static final int DEF_BG_INPUT       = 0xF0181818;
-    private static final int DEF_BG_SELECTED    = 0xF0282828;
-    private static final int DEF_TEXT_PRIMARY   = 0xFFFFFFFF;
-    private static final int DEF_TEXT_SECONDARY = 0xFFB0B0B0;
+    private static final int DEF_BG_SIDEBAR     = GuiTheme.DEF_SIDEBAR;
+    private static final int DEF_BG_PANEL       = GuiTheme.DEF_PANEL;
+    private static final int DEF_BG_CARD        = GuiTheme.DEF_CARD;
+    private static final int DEF_BG_CARD_HOVER  = 0xD01A1A1A;
+    private static final int DEF_BG_INPUT       = 0xC0141414;
+    private static final int DEF_BG_SELECTED    = 0xE0222222;
+    private static final int DEF_TEXT_PRIMARY   = GuiTheme.DEF_TEXT;
+    private static final int DEF_TEXT_SECONDARY = GuiTheme.DEF_TEXT_MUTED;
     private static final int DEF_TEXT_MUTED     = 0xFF707070;
-    private static final int DEF_BORDER         = 0xFF2A2A2A;
-    private static final int DEF_BORDER_STRONG  = 0xFF3A3A3A;
-    private static final int DEF_ACCENT         = 0xFFFFFFFF;
-    private static final int DEF_ACCENT_DIM     = 0x55FFFFFF;
-    private static final int DEF_TOGGLE_ON      = 0xFFFFFFFF;
+    private static final int DEF_BORDER         = GuiTheme.DEF_BORDER;
+    private static final int DEF_BORDER_STRONG  = 0xFF333333;
+    private static final int DEF_ACCENT         = GuiTheme.DEF_ACCENT;
+    private static final int DEF_ACCENT_DIM     = 0x55E8E8E8;
+    private static final int DEF_TOGGLE_ON      = GuiTheme.DEF_ACCENT;
     private static final int DEF_TOGGLE_OFF     = 0xFF333333;
     private static final int DEF_TOGGLE_KNOB_ON = 0xFF0A0A0A;
     private static final int DEF_TOGGLE_KNOB_OFF= 0xFFCCCCCC;
     private static final int DEF_SLIDER_TRACK   = 0xFF2A2A2A;
-    private static final int DEF_SLIDER_FILL    = 0xFFFFFFFF;
+    private static final int DEF_SLIDER_FILL    = GuiTheme.DEF_ACCENT;
 
     private static GuiTheme theme() {
         return GuiTheme.get();
@@ -54,9 +52,7 @@ public final class Theme {
     }
 
     public static int BG_CARD_HOVER() {
-        int base = BG_CARD();
-        // Slightly lighten for hover
-        return lighten(base, 12);
+        return lighten(BG_CARD(), 14);
     }
 
     public static int BG_INPUT() { return DEF_BG_INPUT; }
@@ -98,7 +94,7 @@ public final class Theme {
     public static int SLIDER_TRACK() { return BORDER(); }
     public static int SLIDER_FILL() { return ACCENT(); }
 
-    // Legacy static fields kept for any code still referencing constants directly
+    // Legacy static fields (defaults only)
     public static final int BG_OVERLAY = DEF_BG_OVERLAY;
     public static final int BG_SIDEBAR = DEF_BG_SIDEBAR;
     public static final int BG_PANEL = DEF_BG_PANEL;
