@@ -1,7 +1,7 @@
 package dev.voidclient.mixin;
 
 import dev.voidclient.freecam.FreecamController;
-import dev.voidclient.modules.render.CameraControl;
+import dev.voidclient.freelook.FreelookController;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.Entity;
@@ -15,8 +15,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
- * 26.2 Mojang: Camera.update(Level, Entity, boolean thirdPerson, boolean inverseView, float tickProgress)
- * Claude's doc said "setup" — on this project the working target is still update (confirmed by prior builds).
+ * 26.2: Camera.update(Level, Entity, boolean, boolean, float)
+ * Freecam owns position+rotation; Freelook owns rotation only.
  */
 @Mixin(Camera.class)
 public abstract class CameraMixin {
@@ -32,8 +32,8 @@ public abstract class CameraMixin {
         CameraInvoker invoker = (CameraInvoker) (Object) camera;
         if (FreecamController.isActive()) {
             invoker.voidclient$setRotation(FreecamController.yaw(), FreecamController.pitch());
-        } else if (CameraControl.isFreelookActive()) {
-            invoker.voidclient$setRotation(CameraControl.getYaw(), CameraControl.getPitch());
+        } else if (FreelookController.isActive()) {
+            invoker.voidclient$setRotation(FreelookController.yaw(), FreelookController.pitch());
         } else {
             invoker.voidclient$setRotation(vanillaYaw, vanillaPitch);
         }
@@ -57,12 +57,12 @@ public abstract class CameraMixin {
             return;
         }
 
-        if (CameraControl.isFreelookActive()) {
-            invoker.voidclient$setRotation(CameraControl.getYaw(), CameraControl.getPitch());
+        if (FreelookController.isActive()) {
+            // Keep vanilla third-person position; only own rotation
+            invoker.voidclient$setRotation(FreelookController.yaw(), FreelookController.pitch());
         }
     }
 
-    /** Show player body while freecam is active (detached camera). require=0 if renamed. */
     @Inject(method = "isDetached()Z", at = @At("HEAD"), cancellable = true, require = 0)
     private void voidclient$freecamDetached(CallbackInfoReturnable<Boolean> cir) {
         if (FreecamController.isActive()) {
