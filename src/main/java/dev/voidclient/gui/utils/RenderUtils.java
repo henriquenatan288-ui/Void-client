@@ -4,7 +4,8 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 
 /**
- * Stable drawing helpers for 1.21.11 (no blit / no custom pipelines).
+ * Stable drawing helpers for Minecraft 26.2 (GuiGraphicsExtractor).
+ * Procedural rounded rects + text — no blit / no custom pipelines.
  */
 public final class RenderUtils {
 
