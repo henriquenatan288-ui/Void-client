@@ -22,7 +22,7 @@ import java.util.Set;
 /** Cached block scan with an exact nearest-first result set; the 3D renderer draws boxes/lines. */
 public class BlockESP extends Module {
     private static final int MAX_STORED_BLOCKS = 160;
-    private static final int SCAN_BUDGET_PER_TICK = 5000;
+    private static final int SCAN_BUDGET_PER_TICK = 2800;
     private static final int RESCAN_DELAY_TICKS = 10;
 
     private static final String DEFAULT_BLOCKS =
@@ -47,6 +47,9 @@ public class BlockESP extends Module {
     private final BlockPos.Mutable scanMutable = new BlockPos.Mutable();
     private Set<Block> scanSelectedBlocks = Set.of();
     private int scanCursor;
+    private List<ScanRow> scanRows = List.of();
+    private int scanRowCursor;
+    private int scanXCursor;
     private int scanRange = -1;
     private String scanSelection = "";
     private int scanDelay;
@@ -59,6 +62,9 @@ public class BlockESP extends Module {
     @Override
     protected void onEnable() {
         scanCursor = 0;
+        scanRows = List.of();
+        scanRowCursor = 0;
+        scanXCursor = 0;
         scanDelay = 0;
         scanOrigin = null;
     }
@@ -66,6 +72,9 @@ public class BlockESP extends Module {
     @Override
     protected void onDisable() {
         scanCursor = 0;
+        scanRows = List.of();
+        scanRowCursor = 0;
+        scanXCursor = 0;
         scanOrigin = null;
         nearest.clear();
         found.clear();
@@ -79,6 +88,9 @@ public class BlockESP extends Module {
             found.clear();
             nearest.clear();
             scanCursor = 0;
+            scanRows = List.of();
+            scanRowCursor = 0;
+            scanXCursor = 0;
             scanOrigin = null;
             return;
         }
@@ -89,6 +101,9 @@ public class BlockESP extends Module {
             scanRange = radius;
             scanSelection = selected;
             scanCursor = 0;
+            scanRows = List.of();
+            scanRowCursor = 0;
+            scanXCursor = 0;
             scanOrigin = null;
             scanDelay = 0;
             nearest.clear();
@@ -102,6 +117,9 @@ public class BlockESP extends Module {
             double restartDistance = Math.max(4.0, radius / 2.0);
             if (dx * dx + dy * dy + dz * dz > restartDistance * restartDistance) {
                 scanCursor = 0;
+                scanRows = List.of();
+                scanRowCursor = 0;
+                scanXCursor = 0;
                 scanOrigin = null;
                 scanDelay = 0;
                 nearest.clear();
@@ -113,8 +131,6 @@ public class BlockESP extends Module {
             return;
         }
 
-        int side = radius * 2 + 1;
-        int total = side * side * side;
         if (scanCursor == 0) {
             nearest.clear();
             scanOrigin = player.getBlockPos().toImmutable();
@@ -125,40 +141,74 @@ public class BlockESP extends Module {
                 if (selectedIds.contains(option.id())) selectedBlocks.add(option.block());
             }
             scanSelectedBlocks = selectedBlocks;
-        }
+            scanRows = buildScanRows(radius);
+            scanRowCursor = 0;
+            scanXCursor = 0;
 
-        int processed = 0;
-        while (scanCursor < total && processed < SCAN_BUDGET_PER_TICK) {
-            int cursor = scanCursor++;
-            processed++;
-            int x = cursor % side - radius;
-            int y = (cursor / side) % side - radius;
-            int z = cursor / (side * side) - radius;
-            double radiusSquared = (double) radius * radius;
-            if (x * x + y * y + z * z > radiusSquared) continue;
-
-            scanMutable.set(scanOrigin.getX() + x, scanOrigin.getY() + y, scanOrigin.getZ() + z);
-            Block block = mc.world.getBlockState(scanMutable).getBlock();
-            if (!scanSelectedBlocks.contains(block)) continue;
-
-            double distanceSquared = squaredDistance(scanMutable, scanOrigin);
-            if (nearest.size() < MAX_STORED_BLOCKS) {
-                nearest.add(new ScanHit(scanMutable.toImmutable(), distanceSquared));
-            } else if (distanceSquared < nearest.peek().distanceSquared()) {
-                nearest.poll();
-                nearest.add(new ScanHit(scanMutable.toImmutable(), distanceSquared));
+            if (scanSelectedBlocks.isEmpty()) {
+                found.clear();
+                scanCursor = 0;
+                scanOrigin = null;
+                scanRows = List.of();
+                scanDelay = RESCAN_DELAY_TICKS;
+                return;
             }
         }
 
-        if (scanCursor >= total) {
+        int processed = 0;
+        while (scanRowCursor < scanRows.size() && processed < SCAN_BUDGET_PER_TICK) {
+            ScanRow row = scanRows.get(scanRowCursor);
+            int x = scanXCursor - row.maxX();
+            scanMutable.set(scanOrigin.getX() + x,
+                    scanOrigin.getY() + row.y(),
+                    scanOrigin.getZ() + row.z());
+            Block block = mc.world.getBlockState(scanMutable).getBlock();
+            if (scanSelectedBlocks.contains(block)) {
+                double distanceSquared = squaredDistance(scanMutable, scanOrigin);
+                if (nearest.size() < MAX_STORED_BLOCKS) {
+                    nearest.add(new ScanHit(scanMutable.toImmutable(), distanceSquared));
+                } else if (distanceSquared < nearest.peek().distanceSquared()) {
+                    nearest.poll();
+                    nearest.add(new ScanHit(scanMutable.toImmutable(), distanceSquared));
+                }
+            }
+
+            scanCursor++;
+            processed++;
+            scanXCursor++;
+            if (scanXCursor >= row.length()) {
+                scanRowCursor++;
+                scanXCursor = 0;
+            }
+        }
+
+        if (scanRowCursor >= scanRows.size()) {
             found.clear();
             for (ScanHit hit : nearest) found.add(hit.pos());
             BlockPos currentPlayerPos = player.getBlockPos();
             found.sort(Comparator.comparingDouble(pos -> squaredDistance(pos, currentPlayerPos)));
             scanCursor = 0;
             scanOrigin = null;
+            scanRows = List.of();
+            scanRowCursor = 0;
+            scanXCursor = 0;
             scanDelay = RESCAN_DELAY_TICKS;
         }
+    }
+
+    private static List<ScanRow> buildScanRows(int radius) {
+        List<ScanRow> rows = new ArrayList<>();
+        int radiusSquared = radius * radius;
+        for (int y = -radius; y <= radius; y++) {
+            int ySquared = y * y;
+            for (int z = -radius; z <= radius; z++) {
+                int maxXSquared = radiusSquared - ySquared - z * z;
+                if (maxXSquared < 0) continue;
+                int maxX = (int) Math.floor(Math.sqrt(maxXSquared));
+                rows.add(new ScanRow(y, z, maxX));
+            }
+        }
+        return List.copyOf(rows);
     }
 
     private static double squaredDistance(BlockPos a, BlockPos b) {
@@ -166,6 +216,10 @@ public class BlockESP extends Module {
         double dy = a.getY() - b.getY();
         double dz = a.getZ() - b.getZ();
         return dx * dx + dy * dy + dz * dz;
+    }
+
+    private record ScanRow(int y, int z, int maxX) {
+        int length() { return maxX * 2 + 1; }
     }
 
     private record ScanHit(BlockPos pos, double distanceSquared) {}
