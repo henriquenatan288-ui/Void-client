@@ -10,7 +10,7 @@ import java.util.Comparator;
 import java.util.List;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 
 public class ArrayListHud extends Module {
     private final NumberSetting x = addSetting(new NumberSetting("X", "Horizontal", 4, 0, 2000, 1));
@@ -37,7 +37,7 @@ public class ArrayListHud extends Module {
         cachedRenderer = renderer;
     }
 
-    public void render(GuiGraphics ctx, float tickDelta) {
+    public void render(GuiGraphicsExtractor ctx, float tickDelta) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.font == null || VoidClient.MODULE_MANAGER == null) return;
         if (cachedRevision != Module.getStateRevision() || cachedRenderer != mc.font) {

@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.PriorityQueue;
 import java.util.Set;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.Block;
@@ -227,7 +227,7 @@ public class BlockESP extends Module {
     public int getEspColor() { return color.get(); }
     public boolean shouldDrawTracers() { return tracers.get(); }
 
-    public void renderHud(GuiGraphics ctx, float tickDelta) {
+    public void renderHud(GuiGraphicsExtractor ctx, float tickDelta) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.font == null) return;
         ctx.drawString(mc.font,

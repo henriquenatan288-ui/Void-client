@@ -6,7 +6,7 @@ import dev.voidclient.core.Module;
 import dev.voidclient.core.setting.ColorSetting;
 import dev.voidclient.core.setting.NumberSetting;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 
 /**
  * Void Client watermark on screen.
@@ -25,7 +25,7 @@ public class Watermark extends Module {
         setEnabled(true);
     }
 
-    public void render(GuiGraphics ctx, float tickDelta) {
+    public void render(GuiGraphicsExtractor ctx, float tickDelta) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.font == null) return;
 

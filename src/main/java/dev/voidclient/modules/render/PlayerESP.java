@@ -8,7 +8,7 @@ import dev.voidclient.core.setting.NumberSetting;
 import java.util.Comparator;
 import java.util.List;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.world.entity.Entity;
 
@@ -56,7 +56,7 @@ public class PlayerESP extends Module {
         return mc.player.distanceToSqr(other) <= max * max;
     }
 
-    public void renderHud(GuiGraphics ctx, float tickDelta) {
+    public void renderHud(GuiGraphicsExtractor ctx, float tickDelta) {
         if (!nametags.get()) return;
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.font == null) return;
