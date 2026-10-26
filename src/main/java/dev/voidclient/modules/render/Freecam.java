@@ -11,11 +11,8 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Detached free camera.
- *
- * Causa do bug (certeza): forçar THIRD_PERSON_BACK faz o Camera.update aplicar offset
- * atrás do jogador todo frame; a câmera livre perde independência visual.
- * Correção: usar FIRST_PERSON e sobrescrever posição/rotação no CameraMixin (RETURN).
+ * Detached free camera (26.2 Mojang mappings).
+ * Touch look: CameraControl.tickCapturePlayerLook samples player rot delta.
  */
 public class Freecam extends Module {
     private final NumberSetting speed = addSetting(
@@ -45,7 +42,6 @@ public class Freecam extends Module {
             return;
         }
 
-        // Stop freelook conflict
         if (CameraControl.isFreelookActive()) {
             Module fl = VoidClient.MODULE_MANAGER != null
                     ? VoidClient.MODULE_MANAGER.getByName("Freelook") : null;
@@ -66,10 +62,8 @@ public class Freecam extends Module {
         player.setDeltaMovement(Vec3.ZERO);
         player.setNoGravity(true);
         CameraControl.startFreecam(player);
-
-        // FIRST_PERSON avoids third-person orbit fighting our setPosition
         mc.options.setCameraType(CameraType.FIRST_PERSON);
-        VoidClient.LOGGER.info("Freecam enabled; perspective was {}", previousPerspective);
+        VoidClient.LOGGER.info("Freecam enabled");
     }
 
     @Override
@@ -77,7 +71,6 @@ public class Freecam extends Module {
         restoreAll();
     }
 
-    /** Restore perspective + player state (also used if death/world change triggers disable). */
     private void restoreAll() {
         CameraControl.stopFreecam();
         Minecraft mc = Minecraft.getInstance();
@@ -87,9 +80,7 @@ public class Freecam extends Module {
                 capturedPlayer.setNoGravity(previousNoGravity);
                 capturedPlayer.setOnGround(previousOnGround);
                 capturedPlayer.setDeltaMovement(previousVelocity);
-            } catch (Throwable t) {
-                VoidClient.LOGGER.warn("Freecam: could not restore physics on captured player", t);
-            }
+            } catch (Throwable ignored) {}
 
             if (mc.player == capturedPlayer && mc.level == capturedWorld) {
                 try {
@@ -97,9 +88,7 @@ public class Freecam extends Module {
                     capturedPlayer.setYRot(previousYaw);
                     capturedPlayer.setXRot(previousPitch);
                     capturedPlayer.setYHeadRot(previousYaw);
-                } catch (Throwable t) {
-                    VoidClient.LOGGER.warn("Freecam: could not restore pose", t);
-                }
+                } catch (Throwable ignored) {}
             }
         }
 
@@ -113,7 +102,7 @@ public class Freecam extends Module {
             mc.options.setCameraType(previousPerspective);
         }
         previousPerspective = null;
-        VoidClient.LOGGER.info("Freecam disabled; state restored");
+        VoidClient.LOGGER.info("Freecam disabled; restored");
     }
 
     @Override
@@ -121,7 +110,6 @@ public class Freecam extends Module {
         Minecraft mc = Minecraft.getInstance();
         if (!CameraControl.isFreecamActive()) return;
 
-        // Any path that replaces player/world must restore
         if (mc.player == null || mc.level == null
                 || mc.player != capturedPlayer || mc.level != capturedWorld
                 || mc.player.isDeadOrDying()) {
@@ -129,10 +117,12 @@ public class Freecam extends Module {
             return;
         }
 
-        // Keep first-person so vanilla orbit does not pull the camera
         if (mc.options.getCameraType() != CameraType.FIRST_PERSON) {
             mc.options.setCameraType(CameraType.FIRST_PERSON);
         }
+
+        // Touch / virtual pad look → virtual camera
+        CameraControl.tickCapturePlayerLook(mc.player);
 
         mc.player.setDeltaMovement(Vec3.ZERO);
         mc.player.setNoGravity(true);
