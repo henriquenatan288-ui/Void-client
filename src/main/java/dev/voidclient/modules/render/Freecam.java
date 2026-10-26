@@ -42,7 +42,7 @@ public class Freecam extends Module {
         previousPerspective = mc.options.getPerspective();
         capturedPlayer = player;
         capturedWorld = mc.world;
-        previousPosition = player.getPos();
+        previousPosition = new Vec3d(player.getX(), player.getY(), player.getZ());
         previousVelocity = player.getVelocity();
         previousYaw = player.getYaw();
         previousPitch = player.getPitch();
