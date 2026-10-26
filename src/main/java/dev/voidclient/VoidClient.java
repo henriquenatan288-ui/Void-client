@@ -14,6 +14,7 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
 import dev.voidclient.modules.render.VoidWorldRenderer;
+import dev.voidclient.modules.render.VoidRenderLayers;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.text.Text;
@@ -38,6 +39,7 @@ public class VoidClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
         LOGGER.info("{} {} initializing...", NAME, VERSION);
+        VoidRenderLayers.bootstrap();
 
         EVENT_BUS = new EventBus();
         MODULE_MANAGER = new ModuleManager(EVENT_BUS);

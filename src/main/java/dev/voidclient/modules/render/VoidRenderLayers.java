@@ -22,5 +22,8 @@ public final class VoidRenderLayers {
             RenderSetup.builder(ESP_LINES_PIPELINE).expectedBufferSize(4096).build()
     );
 
+    /** Load and register the pipeline early, before the first world render. */
+    public static void bootstrap() {}
+
     private VoidRenderLayers() {}
 }
