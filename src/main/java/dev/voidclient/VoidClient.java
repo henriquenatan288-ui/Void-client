@@ -68,7 +68,7 @@ public class VoidClient implements ClientModInitializer {
             }
         });
 
-        WorldRenderEvents.BEFORE_DEBUG_RENDER.register(VoidWorldRenderer::render);
+        WorldRenderEvents.AFTER_ENTITIES.register(VoidWorldRenderer::render);
 
         HudRenderCallback.EVENT.register((drawContext, tickCounter) -> {
             float tickDelta = tickCounter.getTickProgress(false);
