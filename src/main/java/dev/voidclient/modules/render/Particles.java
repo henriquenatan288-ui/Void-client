@@ -10,10 +10,6 @@ import net.minecraft.core.particles.ParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.world.entity.player.Player;
 
-/**
- * Orbiting particle styles around the local player.
- * Uses addParticle(..., force, alwaysShow, ...) so Minimal settings still show them when supported.
- */
 public class Particles extends Module {
     private final ModeSetting style = addSetting(new ModeSetting(
             "Style", "Particle style", "Crown",
@@ -28,9 +24,8 @@ public class Particles extends Module {
             new NumberSetting("Height", "Orbit height", 1.15, 0.2, 2.2, 0.05));
 
     private int tick;
-    private int spawnCount;
-    private boolean loggedTick;
-    private boolean loggedSpawn;
+    private int spawnOk;
+    private int spawnFail;
 
     public Particles() {
         super("Particles", "Orbiting symbols around you.", Category.RENDER);
@@ -39,25 +34,16 @@ public class Particles extends Module {
     @Override
     protected void onEnable() {
         tick = 0;
-        spawnCount = 0;
-        loggedTick = false;
-        loggedSpawn = false;
-        VoidClient.LOGGER.info("Particles ON style={} dist={} amount={}",
-                style.get(), distance.get(), amount.getInt());
+        spawnOk = 0;
+        spawnFail = 0;
+        VoidClient.LOGGER.info("Particles ON style={}", style.get());
     }
 
     @Override
     public void onTick() {
         Minecraft mc = Minecraft.getInstance();
         Player player = mc.player;
-        if (player == null || mc.level == null) {
-            VoidClient.LOGGER.debug("Particles tick skipped: player/level null");
-            return;
-        }
-        if (!loggedTick) {
-            loggedTick = true;
-            VoidClient.LOGGER.info("Particles first onTick ok");
-        }
+        if (player == null || mc.level == null) return;
 
         tick++;
         double x = player.getX();
@@ -77,6 +63,10 @@ public class Particles extends Module {
             case "Mix" -> mix(mc, x, y + height.get(), z, radius, count, phase);
             default -> orbit(mc, ParticleTypes.END_ROD, x, y + height.get(), z, radius, count, phase);
         }
+
+        if (tick % 100 == 0) {
+            VoidClient.LOGGER.info("Particles tick={} ok={} fail={}", tick, spawnOk, spawnFail);
+        }
     }
 
     private void crown(Minecraft mc, double x, double y, double z, double radius, int count, double phase) {
@@ -86,8 +76,7 @@ public class Particles extends Module {
             emit(mc, ParticleTypes.END_ROD,
                     x + Math.cos(angle) * radius,
                     hy + Math.sin(angle * 2.0) * 0.1,
-                    z + Math.sin(angle) * radius,
-                    0, 0.02, 0);
+                    z + Math.sin(angle) * radius);
         }
     }
 
@@ -96,12 +85,10 @@ public class Particles extends Module {
             double angle = phase + i * (Math.PI * 2.0 / count);
             double h = y + 0.6 + (i % 5) * 0.18;
             emit(mc, ParticleTypes.CRIT,
-                    x + Math.cos(angle) * (radius * 0.7),
-                    h,
-                    z + Math.sin(angle) * (radius * 0.7),
-                    0, 0.05, 0);
+                    x + Math.cos(angle) * (radius * 0.7), h,
+                    z + Math.sin(angle) * (radius * 0.7));
         }
-        emit(mc, ParticleTypes.ENCHANTED_HIT, x, y + 1.1, z, 0, 0.04, 0);
+        emit(mc, ParticleTypes.ENCHANTED_HIT, x, y + 1.1, z);
     }
 
     private void totem(Minecraft mc, double x, double y, double z, double radius, int count, double phase) {
@@ -110,8 +97,7 @@ public class Particles extends Module {
             emit(mc, ParticleTypes.TOTEM_OF_UNDYING,
                     x + Math.cos(angle) * radius,
                     y + 0.4 + (i % 4) * 0.28,
-                    z + Math.sin(angle) * radius,
-                    0, 0.1, 0);
+                    z + Math.sin(angle) * radius);
         }
     }
 
@@ -126,8 +112,7 @@ public class Particles extends Module {
             emit(mc, fx,
                     x + Math.cos(angle) * radius,
                     y + Math.sin(angle * 2.0 + phase) * 0.12,
-                    z + Math.sin(angle) * radius,
-                    0, 0.01, 0);
+                    z + Math.sin(angle) * radius);
         }
     }
 
@@ -138,25 +123,25 @@ public class Particles extends Module {
             emit(mc, fx,
                     x + Math.cos(angle) * radius,
                     y + Math.sin(angle * 2.0 + phase) * 0.12,
-                    z + Math.sin(angle) * radius,
-                    0, 0.01, 0);
+                    z + Math.sin(angle) * radius);
         }
     }
 
-    private void emit(Minecraft mc, ParticleOptions effect,
-                      double x, double y, double z,
-                      double vx, double vy, double vz) {
+    private void emit(Minecraft mc, ParticleOptions effect, double x, double y, double z) {
         try {
-            // force=true, alwaysShow=true — still visible on low particle settings when API supports it
-            mc.level.addParticle(effect, true, true, x, y, z, vx, vy, vz);
-            spawnCount++;
-            if (!loggedSpawn) {
-                loggedSpawn = true;
-                VoidClient.LOGGER.info("Particles first spawn type={} at {},{},{}",
-                        effect.getType(), x, y, z);
+            // force + alwaysShow when API supports 7-arg overload
+            mc.level.addParticle(effect, true, true, x, y, z, 0, 0.02, 0);
+            spawnOk++;
+        } catch (Throwable t1) {
+            try {
+                mc.level.addParticle(effect, x, y, z, 0, 0.02, 0);
+                spawnOk++;
+            } catch (Throwable t2) {
+                spawnFail++;
+                if (spawnFail < 3) {
+                    VoidClient.LOGGER.error("Particles spawn failed", t2);
+                }
             }
-        } catch (Throwable t) {
-            VoidClient.LOGGER.error("Particles spawn failed", t);
         }
     }
 }
