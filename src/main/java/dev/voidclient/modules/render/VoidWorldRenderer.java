@@ -22,6 +22,7 @@ public final class VoidWorldRenderer {
         Camera camera = mc.gameRenderer.getCamera();
         Vec3d cameraPos = camera.getCameraPos();
         float tickProgress = mc.getRenderTickCounter().getTickProgress(false);
+        if (context.consumers() == null) return;
         VertexConsumer vertices = context.consumers().getBuffer(VoidRenderLayers.ESP_LINES);
 
         Module playerEspModule = VoidClient.MODULE_MANAGER == null ? null
