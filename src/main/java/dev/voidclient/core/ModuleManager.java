@@ -11,6 +11,12 @@ import dev.voidclient.modules.combat.SlowHit;
 import dev.voidclient.modules.hud.ArrayListHud;
 import dev.voidclient.modules.hud.FPS;
 import dev.voidclient.modules.hud.Watermark;
+import dev.voidclient.modules.misc.DeathCoords;
+import dev.voidclient.modules.misc.Derp;
+import dev.voidclient.modules.misc.NameProtect;
+import dev.voidclient.modules.misc.NoHurtCam;
+import dev.voidclient.modules.misc.Panic;
+import dev.voidclient.modules.misc.Zoom;
 import dev.voidclient.modules.movement.Fly;
 import dev.voidclient.modules.movement.FlyBoat;
 import dev.voidclient.modules.movement.Jesus;
@@ -25,6 +31,14 @@ import dev.voidclient.modules.render.Fullbright;
 import dev.voidclient.modules.render.Particles;
 import dev.voidclient.modules.render.PlayerESP;
 import dev.voidclient.modules.render.Tracers;
+import dev.voidclient.modules.utility.AutoEat;
+import dev.voidclient.modules.utility.AutoRespawn;
+import dev.voidclient.modules.utility.AutoSprint;
+import dev.voidclient.modules.utility.ChestStealer;
+import dev.voidclient.modules.utility.CoordsCopy;
+import dev.voidclient.modules.utility.InvCleaner;
+import dev.voidclient.modules.utility.MiddleClickFriend;
+import dev.voidclient.modules.utility.Timer;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.IdentityHashMap;
@@ -39,14 +53,20 @@ public class ModuleManager {
 
     public ModuleManager(EventBus eventBus) {
         register(new ClickGuiModule());
+
+        // Combat
         register(new AutoTotem());
         register(new SlowHit());
+
+        // Movement
         register(new Fly());
         register(new Jesus());
         register(new FlyBoat());
         register(new Speed());
         register(new NoFall());
         register(new ToggleSprint());
+
+        // Render
         register(new Freecam());
         register(new Freelook());
         register(new BlockESP());
@@ -55,6 +75,26 @@ public class ModuleManager {
         register(new Particles());
         register(new BreakWaves());
         register(new Fullbright());
+
+        // Utility
+        register(new AutoSprint());
+        register(new AutoRespawn());
+        register(new AutoEat());
+        register(new MiddleClickFriend());
+        register(new CoordsCopy());
+        register(new ChestStealer());
+        register(new InvCleaner());
+        register(new Timer());
+
+        // Misc
+        register(new Derp());
+        register(new NoHurtCam());
+        register(new Zoom());
+        register(new DeathCoords());
+        register(new NameProtect());
+        register(new Panic());
+
+        // HUD
         register(new FPS());
         register(new ArrayListHud());
         register(new Watermark());
