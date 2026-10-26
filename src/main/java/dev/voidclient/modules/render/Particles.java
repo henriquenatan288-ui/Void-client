@@ -24,7 +24,7 @@ public class Particles extends Module {
     protected void onEnable() {
         tick = 0;
         loggedFirstSpawn = false;
-        VoidClient.LOGGER.debug("Particles enabled; style={}", mode.get());
+        VoidClient.LOGGER.info("Particles enabled; style={}", mode.get());
     }
 
     @Override
@@ -103,7 +103,7 @@ public class Particles extends Module {
                 x, y, z, velocityX, velocityY, velocityZ);
         if (!loggedFirstSpawn) {
             loggedFirstSpawn = true;
-            VoidClient.LOGGER.debug("Particles emitted first effect={} at {},{},{}",
+            VoidClient.LOGGER.info("Particles emitted first effect={} at {},{},{}",
                     effect.getType(), x, y, z);
         }
     }
