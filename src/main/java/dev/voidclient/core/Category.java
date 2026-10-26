@@ -9,7 +9,8 @@ public enum Category {
     RENDER("Render"),
     UTILITY("Utility"),
     HUD("HUD"),
-    MISC("Misc");
+    MISC("Misc"),
+    PERSONALIZATION("Personalization");
 
     private final String displayName;
 
