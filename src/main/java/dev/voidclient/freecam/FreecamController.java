@@ -1,5 +1,3 @@
-// SPDX-License-Identifier: MIT
-// Void Client - original freecam controller (no player physics mutation).
 package dev.voidclient.freecam;
 
 import net.minecraft.client.KeyMapping;
@@ -9,8 +7,7 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Independent free camera. Does NOT touch velocity, noGravity, perspective or movement packets.
- * CameraMixin applies pos/rot; InputMixin freezes body input; EntityLookMixin routes look.
+ * Independent free camera. Does NOT mutate player velocity, noGravity, perspective or packets.
  */
 public final class FreecamController {
     private FreecamController() {}
@@ -20,7 +17,6 @@ public final class FreecamController {
     public static boolean disableOnDamage = true;
     public static boolean blockInteractions = true;
 
-    /** Fired when freecam stops itself (death, world change, damage). */
     public static Runnable onAutoStop = () -> {};
 
     private static boolean active;
@@ -28,6 +24,8 @@ public final class FreecamController {
     private static double x, y, z;
     private static float yaw, pitch;
     private static long lastNs;
+    private static float lockedYaw, lockedPitch;
+    private static boolean bodyLocked;
 
     public static boolean isActive() { return active; }
     public static boolean blocksInteraction() { return active && blockInteractions; }
@@ -44,6 +42,9 @@ public final class FreecamController {
         z = eye.z;
         yaw = p.getYRot();
         pitch = p.getXRot();
+        lockedYaw = yaw;
+        lockedPitch = pitch;
+        bodyLocked = true;
         owner = p;
         lastNs = System.nanoTime();
         active = true;
@@ -52,14 +53,9 @@ public final class FreecamController {
     public static void stop() {
         active = false;
         owner = null;
+        bodyLocked = false;
     }
 
-    public static void toggle(Minecraft mc) {
-        if (active) stop();
-        else start(mc);
-    }
-
-    /** Call from module onTick (or END_CLIENT_TICK). */
     public static void tick(Minecraft mc) {
         if (!active) return;
         LocalPlayer p = mc.player;
@@ -68,34 +64,22 @@ public final class FreecamController {
         if (invalid || hurt) {
             stop();
             try { onAutoStop.run(); } catch (Throwable ignored) {}
+            return;
         }
+        captureTouchLook(p);
     }
 
-    /** Mouse/touch via Entity.turn mixin. */
     public static void look(double dx, double dy) {
         if (!active) return;
         yaw += (float) dx * 0.15f;
         pitch = Mth.clamp(pitch + (float) dy * 0.15f, -90f, 90f);
     }
 
-    /**
-     * Also captures mobile touch that writes rotation onto the player instead of turn().
-     * Call once per tick while active: sample player delta, apply to camera, restore body.
-     */
+    /** Mobile: touch often writes rot on the player; redirect delta to camera and restore body. */
     public static void captureTouchLook(LocalPlayer p) {
-        if (!active || p == null || p != owner) return;
+        if (!active || p == null || !bodyLocked) return;
         float py = p.getYRot();
         float pp = p.getXRot();
-        // Body should stay where freecam started; any delta is touch look
-        float dyaw = py - yaw; // wrong — body is not locked to yaw
-        // We lock body to start orientation stored implicitly: re-read start from owner eye was only pos.
-        // Simpler: if player yaw differs from our last applied body lock, use delta.
-        // Store locked body separately:
-        if (!bodyLocked) {
-            lockedYaw = py;
-            lockedPitch = pp;
-            bodyLocked = true;
-        }
         float dYaw = py - lockedYaw;
         float dPitch = pp - lockedPitch;
         while (dYaw > 180f) dYaw -= 360f;
@@ -109,26 +93,15 @@ public final class FreecamController {
         p.setYHeadRot(lockedYaw);
     }
 
-    private static float lockedYaw, lockedPitch;
-    private static boolean bodyLocked;
-
-    public static void clearBodyLock() {
-        bodyLocked = false;
-    }
-
-    /** Called every camera frame from CameraMixin after vanilla update. */
     public static void step(Minecraft mc) {
         if (!active) return;
         long now = System.nanoTime();
         double dt = Math.min((now - lastNs) / 1.0e9, 0.1);
         lastNs = now;
 
-        // 26.2: screen is via gui.screen()
         try {
             if (mc.gui != null && mc.gui.screen() != null) return;
-        } catch (Throwable t) {
-            // fallback — if API differs, still allow movement
-        }
+        } catch (Throwable ignored) {}
 
         double f = axis(mc.options.keyUp, mc.options.keyDown);
         double r = axis(mc.options.keyRight, mc.options.keyLeft);
