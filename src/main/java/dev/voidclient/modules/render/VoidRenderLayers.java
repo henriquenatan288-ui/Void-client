@@ -13,7 +13,6 @@ public final class VoidRenderLayers {
             RenderPipeline.builder(RenderPipelines.LINES_SNIPPET)
                     .withLocation(Identifier.fromNamespaceAndPath("voidclient", "pipeline/esp_lines"))
                     .withDepthStencilState(Optional.empty())
-                    .withDepthWrite(false)
                     .build()
     );
 
