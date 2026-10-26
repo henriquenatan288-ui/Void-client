@@ -1,9 +1,9 @@
 package dev.voidclient.mixin;
 
 import dev.voidclient.VoidClient;
-import net.minecraft.client.Keyboard;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.input.KeyInput;
+import net.minecraft.client.KeyboardHandler;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.input.KeyEvent;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -13,16 +13,16 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * 1.21.11: onKey(long window, int action, KeyInput input)
  * Used for module keybinds (not ClickGUI — that uses Fabric KeyBinding).
  */
-@Mixin(Keyboard.class)
+@Mixin(KeyboardHandler.class)
 public class KeyboardMixin {
 
     @Inject(
-            method = "onKey(JILnet/minecraft/client/input/KeyInput;)V",
+            method = "keyPress(JILnet/minecraft/client/input/KeyEvent;)V",
             at = @At("HEAD")
     )
-    private void voidclient$onKey(long window, int action, KeyInput input, CallbackInfo ci) {
-        MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc == null || mc.currentScreen != null) return;
+    private void voidclient$onKey(long window, int action, KeyEvent input, CallbackInfo ci) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc == null || mc.screen != null) return;
         if (input == null) return;
 
         // Skip Right Shift — handled by official KeyBinding

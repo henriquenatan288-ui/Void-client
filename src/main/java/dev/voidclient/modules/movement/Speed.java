@@ -3,9 +3,9 @@ package dev.voidclient.modules.movement;
 import dev.voidclient.core.Category;
 import dev.voidclient.core.Module;
 import dev.voidclient.core.setting.NumberSetting;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.network.ClientPlayerEntity;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * Faster ground movement.
@@ -21,20 +21,20 @@ public class Speed extends Module {
 
     @Override
     public void onTick() {
-        MinecraftClient mc = MinecraftClient.getInstance();
-        ClientPlayerEntity p = mc.player;
+        Minecraft mc = Minecraft.getInstance();
+        LocalPlayer p = mc.player;
         if (p == null) return;
-        if (!p.isOnGround()) return;
-        if (p.isSneaking()) return;
+        if (!p.onGround()) return;
+        if (p.isShiftKeyDown()) return;
 
-        boolean moving = mc.options.forwardKey.isPressed()
-                || mc.options.backKey.isPressed()
-                || mc.options.leftKey.isPressed()
-                || mc.options.rightKey.isPressed();
+        boolean moving = mc.options.keyUp.isDown()
+                || mc.options.keyDown.isDown()
+                || mc.options.keyLeft.isDown()
+                || mc.options.keyRight.isDown();
         if (!moving) return;
 
         float m = multiplier.getFloat();
-        Vec3d v = p.getVelocity();
-        p.setVelocity(v.x * m, v.y, v.z * m);
+        Vec3 v = p.getDeltaMovement();
+        p.setDeltaMovement(v.x * m, v.y, v.z * m);
     }
 }

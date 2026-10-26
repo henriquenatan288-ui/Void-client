@@ -3,8 +3,8 @@ package dev.voidclient.modules.render;
 import dev.voidclient.core.Category;
 import dev.voidclient.core.Module;
 import dev.voidclient.mixin.SimpleOptionAccessor;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.option.SimpleOption;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.OptionInstance;
 
 /** Fullbright by directly changing the gamma option value, restoring it on disable. */
 public class Fullbright extends Module {
@@ -16,20 +16,20 @@ public class Fullbright extends Module {
 
     @Override
     protected void onEnable() {
-        MinecraftClient mc = MinecraftClient.getInstance();
+        Minecraft mc = Minecraft.getInstance();
         if (mc == null || mc.options == null) return;
 
-        SimpleOption<Double> gamma = mc.options.getGamma();
-        previousGamma = gamma.getValue();
+        OptionInstance<Double> gamma = mc.options.gamma();
+        previousGamma = gamma.get();
         ((SimpleOptionAccessor) (Object) gamma).voidclient$setValueDirect(16.0);
     }
 
     @Override
     protected void onDisable() {
-        MinecraftClient mc = MinecraftClient.getInstance();
+        Minecraft mc = Minecraft.getInstance();
         if (mc == null || mc.options == null || previousGamma == null) return;
 
-        ((SimpleOptionAccessor) (Object) mc.options.getGamma()).voidclient$setValueDirect(previousGamma);
+        ((SimpleOptionAccessor) (Object) mc.options.gamma()).voidclient$setValueDirect(previousGamma);
         previousGamma = null;
     }
 }

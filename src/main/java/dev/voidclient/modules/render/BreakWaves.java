@@ -5,14 +5,13 @@ import dev.voidclient.core.Category;
 import dev.voidclient.core.Module;
 import dev.voidclient.core.setting.ColorSetting;
 import dev.voidclient.core.setting.NumberSetting;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.world.ClientWorld;
-import net.minecraft.particle.DustParticleEffect;
-import net.minecraft.util.math.BlockPos;
-
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.particles.DustParticleOptions;
 
 /** Expanding rings triggered when the locally tracked block changes to air. */
 public class BreakWaves extends Module {
@@ -23,7 +22,7 @@ public class BreakWaves extends Module {
 
     private final List<Wave> active = new ArrayList<>();
     private static BlockPos trackedTarget;
-    private static ClientWorld trackedWorld;
+    private static ClientLevel trackedWorld;
     private static long targetTrackedAt = Long.MIN_VALUE;
 
     public BreakWaves() {
@@ -36,15 +35,15 @@ public class BreakWaves extends Module {
         Module module = VoidClient.MODULE_MANAGER.getByName("BreakWaves");
         if (!(module instanceof BreakWaves breakWaves) || !breakWaves.isEnabled()) return;
 
-        MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc.world == null) return;
-        BlockPos immutablePos = pos.toImmutable();
-        if (!immutablePos.equals(trackedTarget) || trackedWorld != mc.world) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null) return;
+        BlockPos immutablePos = pos.immutable();
+        if (!immutablePos.equals(trackedTarget) || trackedWorld != mc.level) {
             VoidClient.LOGGER.info("BreakWaves tracking mining target {}", immutablePos);
         }
         trackedTarget = immutablePos;
-        trackedWorld = mc.world;
-        targetTrackedAt = mc.world.getTime();
+        trackedWorld = mc.level;
+        targetTrackedAt = mc.level.getGameTime();
     }
 
     /**
@@ -54,13 +53,13 @@ public class BreakWaves extends Module {
     public static void onClientBlockRemoved(BlockPos pos) {
         if (pos == null || trackedTarget == null || !trackedTarget.equals(pos)) return;
 
-        MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc.world == null || mc.world != trackedWorld) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null || mc.level != trackedWorld) {
             clearTrackedTarget();
             return;
         }
 
-        long age = mc.world.getTime() - targetTrackedAt;
+        long age = mc.level.getGameTime() - targetTrackedAt;
         VoidClient.LOGGER.info("BreakWaves saw air update at tracked block {}, age={} ticks", pos, age);
         if (age < 0 || age > 40) {
             clearTrackedTarget();
@@ -102,20 +101,20 @@ public class BreakWaves extends Module {
 
     @Override
     public void onTick() {
-        MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc.world == null || mc.player == null) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null || mc.player == null) {
             active.clear();
             clearTrackedTarget();
             return;
         }
 
-        if (trackedTarget != null && (trackedWorld != mc.world
-                || mc.world.getTime() - targetTrackedAt > 40)) {
+        if (trackedTarget != null && (trackedWorld != mc.level
+                || mc.level.getGameTime() - targetTrackedAt > 40)) {
             clearTrackedTarget();
         }
         if (active.isEmpty()) return;
 
-        DustParticleEffect dust = new DustParticleEffect(color.getRgb(), 0.9f);
+        DustParticleOptions dust = new DustParticleOptions(color.getRgb(), 0.9f);
         int maxWaves = waves.getInt();
         Iterator<Wave> iterator = active.iterator();
         while (iterator.hasNext()) {
@@ -129,7 +128,7 @@ public class BreakWaves extends Module {
                 int points = 14;
                 for (int i = 0; i < points; i++) {
                     double angle = Math.PI * 2.0 * i / points;
-                    mc.world.addParticleClient(dust, true, true,
+                    mc.level.addParticle(dust, true, true,
                             wave.x + Math.cos(angle) * radius,
                             wave.y + 0.03,
                             wave.z + Math.sin(angle) * radius,

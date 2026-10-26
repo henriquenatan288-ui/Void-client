@@ -3,12 +3,12 @@ package dev.voidclient.modules.combat;
 import dev.voidclient.core.Category;
 import dev.voidclient.core.Module;
 import dev.voidclient.core.setting.BooleanSetting;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.network.ClientPlayerEntity;
-import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-import net.minecraft.screen.slot.SlotActionType;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.inventory.ClickType;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 
 /**
  * Keeps a Totem of Undying in the offhand.
@@ -24,20 +24,20 @@ public class AutoTotem extends Module {
 
     @Override
     public void onTick() {
-        MinecraftClient mc = MinecraftClient.getInstance();
-        ClientPlayerEntity p = mc.player;
-        if (p == null || mc.interactionManager == null) return;
-        if (p.currentScreenHandler != p.playerScreenHandler) return;
+        Minecraft mc = Minecraft.getInstance();
+        LocalPlayer p = mc.player;
+        if (p == null || mc.gameMode == null) return;
+        if (p.containerMenu != p.inventoryMenu) return;
 
-        ItemStack off = p.getOffHandStack();
-        if (off.isOf(Items.TOTEM_OF_UNDYING)) return;
+        ItemStack off = p.getOffhandItem();
+        if (off.is(Items.TOTEM_OF_UNDYING)) return;
         if (soft.get() && !off.isEmpty()) return;
 
-        PlayerInventory inv = p.getInventory();
+        Inventory inv = p.getInventory();
         int slot = -1;
         for (int i = 0; i < 36; i++) {
-            ItemStack s = inv.getStack(i);
-            if (s.isOf(Items.TOTEM_OF_UNDYING)) {
+            ItemStack s = inv.getItem(i);
+            if (s.is(Items.TOTEM_OF_UNDYING)) {
                 slot = i;
                 break;
             }
@@ -48,15 +48,15 @@ public class AutoTotem extends Module {
         int containerSlot = slot < 9 ? slot + 36 : slot;
 
         // Pick up totem
-        mc.interactionManager.clickSlot(
-                p.playerScreenHandler.syncId, containerSlot, 0, SlotActionType.PICKUP, p);
+        mc.gameMode.handleInventoryMouseClick(
+                p.inventoryMenu.containerId, containerSlot, 0, ClickType.PICKUP, p);
         // Place in offhand (slot 45)
-        mc.interactionManager.clickSlot(
-                p.playerScreenHandler.syncId, 45, 0, SlotActionType.PICKUP, p);
+        mc.gameMode.handleInventoryMouseClick(
+                p.inventoryMenu.containerId, 45, 0, ClickType.PICKUP, p);
         // Put back whatever was in cursor
-        if (!p.currentScreenHandler.getCursorStack().isEmpty()) {
-            mc.interactionManager.clickSlot(
-                    p.playerScreenHandler.syncId, containerSlot, 0, SlotActionType.PICKUP, p);
+        if (!p.containerMenu.getCarried().isEmpty()) {
+            mc.gameMode.handleInventoryMouseClick(
+                    p.inventoryMenu.containerId, containerSlot, 0, ClickType.PICKUP, p);
         }
     }
 }

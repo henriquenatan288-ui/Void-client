@@ -1,16 +1,16 @@
 package dev.voidclient.mixin;
 
-import net.minecraft.client.input.Input;
-import net.minecraft.util.PlayerInput;
-import net.minecraft.util.math.Vec2f;
+import net.minecraft.client.player.ClientInput;
+import net.minecraft.world.entity.player.Input;
+import net.minecraft.world.phys.Vec2;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.gen.Accessor;
 
-@Mixin(Input.class)
+@Mixin(ClientInput.class)
 public interface InputAccessor {
-    @Accessor("movementVector")
-    void voidclient$setMovementVector(Vec2f movementVector);
+    @Accessor("moveVector")
+    void voidclient$setMovementVector(Vec2 movementVector);
 
-    @Accessor("playerInput")
-    void voidclient$setPlayerInput(PlayerInput playerInput);
+    @Accessor("keyPresses")
+    void voidclient$setPlayerInput(Input playerInput);
 }

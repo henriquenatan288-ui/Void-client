@@ -13,12 +13,12 @@ import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
+import net.minecraft.client.KeyMapping;
+import net.minecraft.client.Minecraft;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 import dev.voidclient.modules.render.VoidWorldRenderer;
 import dev.voidclient.modules.render.VoidRenderLayers;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.option.KeyBinding;
-import net.minecraft.text.Text;
-import net.minecraft.util.Identifier;
 import org.lwjgl.glfw.GLFW;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,7 +32,7 @@ public class VoidClient implements ClientModInitializer {
     public static EventBus EVENT_BUS;
     public static ModuleManager MODULE_MANAGER;
     public static ConfigManager CONFIG_MANAGER;
-    public static KeyBinding OPEN_GUI_KEY;
+    public static KeyMapping OPEN_GUI_KEY;
 
     private static boolean welcomePending;
 
@@ -46,8 +46,8 @@ public class VoidClient implements ClientModInitializer {
         CONFIG_MANAGER = new ConfigManager(MODULE_MANAGER);
         CONFIG_MANAGER.load();
 
-        KeyBinding.Category category = KeyBinding.Category.create(Identifier.of(MOD_ID, "main"));
-        OPEN_GUI_KEY = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+        KeyMapping.Category category = KeyMapping.Category.register(Identifier.fromNamespaceAndPath(MOD_ID, "main"));
+        OPEN_GUI_KEY = KeyBindingHelper.registerKeyBinding(new KeyMapping(
                 "key.voidclient.clickgui", GLFW.GLFW_KEY_RIGHT_SHIFT, category));
 
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> welcomePending = true);
@@ -56,14 +56,14 @@ public class VoidClient implements ClientModInitializer {
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             EVENT_BUS.post(new TickEvent());
 
-            if (welcomePending && client.player != null && client.world != null) {
+            if (welcomePending && client.player != null && client.level != null) {
                 String nick = client.player.getName().getString();
-                client.player.sendMessage(
-                        Text.literal("§7[§fVoid§7] §fWelcome to Void §b" + nick), false);
+                client.player.displayClientMessage(
+                        Component.literal("§7[§fVoid§7] §fWelcome to Void §b" + nick), false);
                 welcomePending = false;
             }
 
-            while (OPEN_GUI_KEY.wasPressed()) {
+            while (OPEN_GUI_KEY.consumeClick()) {
                 toggleClickGui(client);
             }
         });
@@ -71,7 +71,7 @@ public class VoidClient implements ClientModInitializer {
         WorldRenderEvents.AFTER_ENTITIES.register(VoidWorldRenderer::render);
 
         HudRenderCallback.EVENT.register((drawContext, tickCounter) -> {
-            float tickDelta = tickCounter.getTickProgress(false);
+            float tickDelta = tickCounter.getGameTimeDeltaPartialTick(false);
             EVENT_BUS.post(new Render2DEvent(drawContext, tickDelta));
         });
 
@@ -79,13 +79,13 @@ public class VoidClient implements ClientModInitializer {
                 NAME, MODULE_MANAGER.getModules().size());
     }
 
-    private static void toggleClickGui(MinecraftClient client) {
+    private static void toggleClickGui(Minecraft client) {
         if (client == null) return;
-        if (client.currentScreen instanceof ClickGuiScreen) {
-            client.currentScreen.close();
+        if (client.screen instanceof ClickGuiScreen) {
+            client.screen.onClose();
             return;
         }
-        if (client.currentScreen == null) {
+        if (client.screen == null) {
             client.setScreen(new ClickGuiScreen());
             LOGGER.info("ClickGUI opened");
         }

@@ -1,10 +1,9 @@
 package dev.voidclient.modules.render;
 
-import net.minecraft.block.Block;
-import net.minecraft.block.Blocks;
-
 import java.util.ArrayList;
 import java.util.List;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
 
 /** Blocks exposed in the BlockESP selection screen. IDs are Minecraft registry paths. */
 public final class BlockCatalog {

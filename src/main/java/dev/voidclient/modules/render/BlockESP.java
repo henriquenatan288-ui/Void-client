@@ -6,18 +6,17 @@ import dev.voidclient.core.setting.BlockListSetting;
 import dev.voidclient.core.setting.BooleanSetting;
 import dev.voidclient.core.setting.ColorSetting;
 import dev.voidclient.core.setting.NumberSetting;
-import net.minecraft.block.Block;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.network.ClientPlayerEntity;
-import net.minecraft.util.math.BlockPos;
-
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.PriorityQueue;
 import java.util.Set;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.block.Block;
 
 /** Cached block scan with an exact nearest-first result set; the 3D renderer draws boxes/lines. */
 public class BlockESP extends Module {
@@ -44,7 +43,7 @@ public class BlockESP extends Module {
     private final List<BlockPos> found = new ArrayList<>(MAX_STORED_BLOCKS);
     private final PriorityQueue<ScanHit> nearest = new PriorityQueue<>(
             Comparator.comparingDouble(ScanHit::distanceSquared).reversed());
-    private final BlockPos.Mutable scanMutable = new BlockPos.Mutable();
+    private final BlockPos.MutableBlockPos scanMutable = new BlockPos.MutableBlockPos();
     private Set<Block> scanSelectedBlocks = Set.of();
     private int scanCursor;
     private List<ScanRow> scanRows = List.of();
@@ -82,9 +81,9 @@ public class BlockESP extends Module {
 
     @Override
     public void onTick() {
-        MinecraftClient mc = MinecraftClient.getInstance();
-        ClientPlayerEntity player = mc.player;
-        if (player == null || mc.world == null) {
+        Minecraft mc = Minecraft.getInstance();
+        LocalPlayer player = mc.player;
+        if (player == null || mc.level == null) {
             found.clear();
             nearest.clear();
             scanCursor = 0;
@@ -110,7 +109,7 @@ public class BlockESP extends Module {
         }
 
         if (scanOrigin != null) {
-            BlockPos playerPos = player.getBlockPos();
+            BlockPos playerPos = player.blockPosition();
             double dx = playerPos.getX() - scanOrigin.getX();
             double dy = playerPos.getY() - scanOrigin.getY();
             double dz = playerPos.getZ() - scanOrigin.getZ();
@@ -133,7 +132,7 @@ public class BlockESP extends Module {
 
         if (scanCursor == 0) {
             nearest.clear();
-            scanOrigin = player.getBlockPos().toImmutable();
+            scanOrigin = player.blockPosition().immutable();
 
             Set<String> selectedIds = blocks.getSelectedIds();
             Set<Block> selectedBlocks = new HashSet<>();
@@ -162,14 +161,14 @@ public class BlockESP extends Module {
             scanMutable.set(scanOrigin.getX() + x,
                     scanOrigin.getY() + row.y(),
                     scanOrigin.getZ() + row.z());
-            Block block = mc.world.getBlockState(scanMutable).getBlock();
+            Block block = mc.level.getBlockState(scanMutable).getBlock();
             if (scanSelectedBlocks.contains(block)) {
                 double distanceSquared = squaredDistance(scanMutable, scanOrigin);
                 if (nearest.size() < MAX_STORED_BLOCKS) {
-                    nearest.add(new ScanHit(scanMutable.toImmutable(), distanceSquared));
+                    nearest.add(new ScanHit(scanMutable.immutable(), distanceSquared));
                 } else if (distanceSquared < nearest.peek().distanceSquared()) {
                     nearest.poll();
-                    nearest.add(new ScanHit(scanMutable.toImmutable(), distanceSquared));
+                    nearest.add(new ScanHit(scanMutable.immutable(), distanceSquared));
                 }
             }
 
@@ -185,7 +184,7 @@ public class BlockESP extends Module {
         if (scanRowCursor >= scanRows.size()) {
             found.clear();
             for (ScanHit hit : nearest) found.add(hit.pos());
-            BlockPos currentPlayerPos = player.getBlockPos();
+            BlockPos currentPlayerPos = player.blockPosition();
             found.sort(Comparator.comparingDouble(pos -> squaredDistance(pos, currentPlayerPos)));
             scanCursor = 0;
             scanOrigin = null;
@@ -228,10 +227,10 @@ public class BlockESP extends Module {
     public int getEspColor() { return color.get(); }
     public boolean shouldDrawTracers() { return tracers.get(); }
 
-    public void renderHud(DrawContext ctx, float tickDelta) {
-        MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc.textRenderer == null) return;
-        ctx.drawText(mc.textRenderer,
+    public void renderHud(GuiGraphics ctx, float tickDelta) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.font == null) return;
+        ctx.drawString(mc.font,
                 "BlockESP: " + found.size() + " found / " + blocks.getSelectedIds().size() + " selected",
                 4, 40, color.get(), true);
     }

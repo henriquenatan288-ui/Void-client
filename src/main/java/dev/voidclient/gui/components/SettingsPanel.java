@@ -5,11 +5,10 @@ import dev.voidclient.core.setting.*;
 import dev.voidclient.gui.BlockSelectionScreen;
 import dev.voidclient.gui.Theme;
 import dev.voidclient.gui.utils.RenderUtils;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.font.TextRenderer;
-import net.minecraft.client.gui.DrawContext;
-
 import java.util.List;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
+import net.minecraft.client.gui.GuiGraphics;
 
 public class SettingsPanel {
     public static final int WIDTH = 190;
@@ -45,7 +44,7 @@ public class SettingsPanel {
         return h + 6;
     }
 
-    public void render(DrawContext ctx, TextRenderer tr, int mouseX, int mouseY) {
+    public void render(GuiGraphics ctx, Font tr, int mouseX, int mouseY) {
         if (!visible) return;
         int h = getHeight();
         int drawY = y + (int) ((1f - openAnim) * 8);
@@ -114,14 +113,14 @@ public class SettingsPanel {
         }
     }
 
-    private void drawToggle(DrawContext ctx, int tx, int ty, boolean on) {
+    private void drawToggle(GuiGraphics ctx, int tx, int ty, boolean on) {
         RenderUtils.fillRounded(ctx, tx, ty, 20, 11, 5, on ? Theme.TOGGLE_ON : Theme.TOGGLE_OFF);
         int kx = on ? tx + 10 : tx + 2;
         RenderUtils.fillRounded(ctx, kx, ty + 2, 7, 7, 3,
                 on ? Theme.TOGGLE_KNOB_ON : Theme.TOGGLE_KNOB_OFF);
     }
 
-    public boolean mouseClicked(double mouseX, double mouseY, int button, TextRenderer tr) {
+    public boolean mouseClicked(double mouseX, double mouseY, int button, Font tr) {
         if (!visible) return false;
         int h = getHeight();
         int drawY = y + (int) ((1f - openAnim) * 8);
@@ -179,8 +178,8 @@ public class SettingsPanel {
                 cy += rowHeight(setting);
             } else if (setting instanceof BlockListSetting blockListSetting) {
                 if (RenderUtils.hovered((int) mouseX, (int) mouseY, x, cy - 2, WIDTH, 22)) {
-                    MinecraftClient mc = MinecraftClient.getInstance();
-                    if (mc != null) mc.setScreen(new BlockSelectionScreen(mc.currentScreen, blockListSetting));
+                    Minecraft mc = Minecraft.getInstance();
+                    if (mc != null) mc.setScreen(new BlockSelectionScreen(mc.screen, blockListSetting));
                     return true;
                 }
                 cy += rowHeight(setting);

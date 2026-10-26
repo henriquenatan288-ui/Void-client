@@ -5,8 +5,8 @@ import dev.voidclient.core.Category;
 import dev.voidclient.core.Module;
 import dev.voidclient.core.setting.ColorSetting;
 import dev.voidclient.core.setting.NumberSetting;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
 
 /**
  * Void Client watermark on screen.
@@ -25,11 +25,11 @@ public class Watermark extends Module {
         setEnabled(true);
     }
 
-    public void render(DrawContext ctx, float tickDelta) {
-        MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc.textRenderer == null) return;
+    public void render(GuiGraphics ctx, float tickDelta) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.font == null) return;
 
         String text = "Void Client " + VoidClient.VERSION + " §7| §fbisteck";
-        ctx.drawText(mc.textRenderer, text, x.getInt(), y.getInt(), color.get(), true);
+        ctx.drawString(mc.font, text, x.getInt(), y.getInt(), color.get(), true);
     }
 }

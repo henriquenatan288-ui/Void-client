@@ -1,15 +1,15 @@
 package dev.voidclient.modules.render;
 
-import net.minecraft.client.network.ClientPlayerEntity;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.world.phys.Vec3;
 
 public final class CameraControl {
     private static boolean freelookActive;
     private static float freelookYaw;
     private static float freelookPitch;
     private static boolean freecamActive;
-    private static Vec3d previousCameraPos = Vec3d.ZERO;
-    private static Vec3d cameraPos = Vec3d.ZERO;
+    private static Vec3 previousCameraPos = Vec3.ZERO;
+    private static Vec3 cameraPos = Vec3.ZERO;
     private static float cameraYaw;
     private static float cameraPitch;
 
@@ -18,20 +18,20 @@ public final class CameraControl {
     public static boolean isFreecamActive() { return freecamActive; }
     public static float getYaw() { return freecamActive ? cameraYaw : freelookYaw; }
     public static float getPitch() { return freecamActive ? cameraPitch : freelookPitch; }
-    public static Vec3d getCameraPos() { return cameraPos; }
+    public static Vec3 getCameraPos() { return cameraPos; }
 
-    public static void startFreelook(ClientPlayerEntity player) {
-        freelookYaw = player.getYaw();
-        freelookPitch = player.getPitch();
+    public static void startFreelook(LocalPlayer player) {
+        freelookYaw = player.getYRot();
+        freelookPitch = player.getXRot();
         freelookActive = true;
     }
     public static void stopFreelook() { freelookActive = false; }
 
-    public static void startFreecam(ClientPlayerEntity player) {
-        cameraPos = player.getCameraPosVec(1.0F);
+    public static void startFreecam(LocalPlayer player) {
+        cameraPos = player.getEyePosition(1.0F);
         previousCameraPos = cameraPos;
-        cameraYaw = player.getYaw();
-        cameraPitch = player.getPitch();
+        cameraYaw = player.getYRot();
+        cameraPitch = player.getXRot();
         freecamActive = true;
     }
     public static void stopFreecam() { freecamActive = false; }
@@ -53,14 +53,14 @@ public final class CameraControl {
         previousCameraPos = cameraPos;
         double yaw = Math.toRadians(cameraYaw);
         double pitch = Math.toRadians(cameraPitch);
-        Vec3d look = new Vec3d(-Math.sin(yaw) * Math.cos(pitch), -Math.sin(pitch), Math.cos(yaw) * Math.cos(pitch));
-        Vec3d right = new Vec3d(Math.cos(yaw), 0.0, Math.sin(yaw));
-        Vec3d movement = look.multiply(forward).add(right.multiply(strafe)).add(0.0, vertical, 0.0);
-        if (movement.lengthSquared() > 1.0) movement = movement.normalize();
-        cameraPos = cameraPos.add(movement.multiply(speed));
+        Vec3 look = new Vec3(-Math.sin(yaw) * Math.cos(pitch), -Math.sin(pitch), Math.cos(yaw) * Math.cos(pitch));
+        Vec3 right = new Vec3(Math.cos(yaw), 0.0, Math.sin(yaw));
+        Vec3 movement = look.scale(forward).add(right.scale(strafe)).add(0.0, vertical, 0.0);
+        if (movement.lengthSqr() > 1.0) movement = movement.normalize();
+        cameraPos = cameraPos.add(movement.scale(speed));
     }
 
-    public static Vec3d interpolatedPosition(float tickDelta) {
+    public static Vec3 interpolatedPosition(float tickDelta) {
         return previousCameraPos.lerp(cameraPos, Math.max(0.0F, Math.min(1.0F, tickDelta)));
     }
 

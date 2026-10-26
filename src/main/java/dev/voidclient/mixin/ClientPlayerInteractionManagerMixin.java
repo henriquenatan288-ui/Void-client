@@ -1,19 +1,19 @@
 package dev.voidclient.mixin;
 
 import dev.voidclient.modules.render.BreakWaves;
-import net.minecraft.client.network.ClientPlayerInteractionManager;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Direction;
+import net.minecraft.client.multiplayer.MultiPlayerGameMode;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /** Tracks all local mining paths; survival block-state confirmation is handled by ClientWorldMixin. */
-@Mixin(ClientPlayerInteractionManager.class)
+@Mixin(MultiPlayerGameMode.class)
 public abstract class ClientPlayerInteractionManagerMixin {
     @Inject(
-            method = "attackBlock(Lnet/minecraft/util/math/BlockPos;Lnet/minecraft/util/math/Direction;)Z",
+            method = "startDestroyBlock(Lnet/minecraft/core/BlockPos;Lnet/minecraft/core/Direction;)Z",
             at = @At("HEAD")
     )
     private void voidclient$trackInitialBlockAttack(
@@ -22,7 +22,7 @@ public abstract class ClientPlayerInteractionManagerMixin {
     }
 
     @Inject(
-            method = "updateBlockBreakingProgress(Lnet/minecraft/util/math/BlockPos;Lnet/minecraft/util/math/Direction;)Z",
+            method = "continueDestroyBlock(Lnet/minecraft/core/BlockPos;Lnet/minecraft/core/Direction;)Z",
             at = @At("HEAD")
     )
     private void voidclient$trackContinuousBlockBreaking(
@@ -31,7 +31,7 @@ public abstract class ClientPlayerInteractionManagerMixin {
     }
 
     @Inject(
-            method = "breakBlock(Lnet/minecraft/util/math/BlockPos;)Z",
+            method = "destroyBlock(Lnet/minecraft/core/BlockPos;)Z",
             at = @At("HEAD")
     )
     private void voidclient$trackImmediateBlockBreak(

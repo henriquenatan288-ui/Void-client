@@ -1,7 +1,7 @@
 package dev.voidclient.gui.utils;
 
-import net.minecraft.client.font.TextRenderer;
-import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.gui.Font;
+import net.minecraft.client.gui.GuiGraphics;
 
 /**
  * Stable drawing helpers for 1.21.11 (no blit / no custom pipelines).
@@ -10,12 +10,12 @@ public final class RenderUtils {
 
     private RenderUtils() {}
 
-    public static void fill(DrawContext ctx, int x, int y, int w, int h, int color) {
+    public static void fill(GuiGraphics ctx, int x, int y, int w, int h, int color) {
         if (w <= 0 || h <= 0) return;
         ctx.fill(x, y, x + w, y + h, color);
     }
 
-    public static void outline(DrawContext ctx, int x, int y, int w, int h, int color) {
+    public static void outline(GuiGraphics ctx, int x, int y, int w, int h, int color) {
         if (w <= 0 || h <= 0) return;
         fill(ctx, x, y, w, 1, color);
         fill(ctx, x, y + h - 1, w, 1, color);
@@ -23,7 +23,7 @@ public final class RenderUtils {
         fill(ctx, x + w - 1, y, 1, h, color);
     }
 
-    public static void fillRounded(DrawContext ctx, int x, int y, int w, int h, int r, int color) {
+    public static void fillRounded(GuiGraphics ctx, int x, int y, int w, int h, int r, int color) {
         if (w <= 0 || h <= 0) return;
         if (r <= 0 || w < r * 2 || h < r * 2) {
             fill(ctx, x, y, w, h, color);
@@ -41,7 +41,7 @@ public final class RenderUtils {
         }
     }
 
-    public static void drawShadow(DrawContext ctx, int x, int y, int w, int h, int radius) {
+    public static void drawShadow(GuiGraphics ctx, int x, int y, int w, int h, int radius) {
         int[] alphas = {0x10000000, 0x18000000, 0x22000000};
         for (int i = 0; i < alphas.length; i++) {
             int o = (alphas.length - i) * 2;
@@ -49,23 +49,23 @@ public final class RenderUtils {
         }
     }
 
-    public static void drawPanel(DrawContext ctx, int x, int y, int w, int h, int radius, int color) {
+    public static void drawPanel(GuiGraphics ctx, int x, int y, int w, int h, int radius, int color) {
         drawShadow(ctx, x, y, w, h, radius);
         fillRounded(ctx, x, y, w, h, radius, color);
         outline(ctx, x, y, w, h, 0x28FFFFFF);
     }
 
-    public static void drawCard(DrawContext ctx, int x, int y, int w, int h, int radius, int color) {
+    public static void drawCard(GuiGraphics ctx, int x, int y, int w, int h, int radius, int color) {
         fillRounded(ctx, x, y, w, h, radius, color);
         outline(ctx, x, y, w, h, 0x1CFFFFFF);
     }
 
-    public static void drawText(DrawContext ctx, TextRenderer tr, String text, int x, int y, int color, boolean shadow) {
-        ctx.drawText(tr, text, x, y, color, shadow);
+    public static void drawText(GuiGraphics ctx, Font tr, String text, int x, int y, int color, boolean shadow) {
+        ctx.drawString(tr, text, x, y, color, shadow);
     }
 
-    public static int textWidth(TextRenderer tr, String text) {
-        return tr.getWidth(text);
+    public static int textWidth(Font tr, String text) {
+        return tr.width(text);
     }
 
     public static boolean hovered(int mx, int my, int x, int y, int w, int h) {

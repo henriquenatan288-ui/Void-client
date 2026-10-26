@@ -2,7 +2,7 @@ package dev.voidclient.gui;
 
 import dev.voidclient.core.Category;
 import dev.voidclient.core.Module;
-import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.Minecraft;
 import org.lwjgl.glfw.GLFW;
 
 /**
@@ -18,8 +18,8 @@ public class ClickGuiModule extends Module {
 
     @Override
     protected void onEnable() {
-        MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc != null && !(mc.currentScreen instanceof ClickGuiScreen)) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc != null && !(mc.screen instanceof ClickGuiScreen)) {
             mc.setScreen(new ClickGuiScreen());
         }
         setEnabled(false);

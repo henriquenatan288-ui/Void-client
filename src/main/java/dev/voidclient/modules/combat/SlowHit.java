@@ -4,12 +4,12 @@ import dev.voidclient.core.Category;
 import dev.voidclient.core.Module;
 import dev.voidclient.core.setting.BooleanSetting;
 import dev.voidclient.core.setting.NumberSetting;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.particle.ParticleTypes;
-import net.minecraft.util.hit.EntityHitResult;
-import net.minecraft.util.hit.HitResult;
+import net.minecraft.client.Minecraft;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.phys.EntityHitResult;
+import net.minecraft.world.phys.HitResult;
 
 /** Visual heavy-hit effect plus a slower local hand-swing animation. */
 public class SlowHit extends Module {
@@ -30,28 +30,28 @@ public class SlowHit extends Module {
 
     @Override
     public void onTick() {
-        MinecraftClient mc = MinecraftClient.getInstance();
-        PlayerEntity player = mc.player;
-        if (player == null || mc.world == null) return;
+        Minecraft mc = Minecraft.getInstance();
+        Player player = mc.player;
+        if (player == null || mc.level == null) return;
 
-        boolean attacking = mc.options.attackKey.isPressed();
+        boolean attacking = mc.options.keyAttack.isDown();
         if (attacking && !wasAttacking) {
-            HitResult hit = mc.crosshairTarget;
+            HitResult hit = mc.hitResult;
             if (hit instanceof EntityHitResult entityHit) {
                 Entity target = entityHit.getEntity();
                 double x = target.getX();
-                double y = target.getBodyY(0.5);
+                double y = target.getY(0.5);
                 double z = target.getZ();
 
                 for (int i = 0; i < 12; i++) {
-                    mc.world.addParticleClient(ParticleTypes.CRIT, x, y, z,
+                    mc.level.addParticle(ParticleTypes.CRIT, x, y, z,
                             (Math.random() - 0.5) * 0.5,
                             Math.random() * 0.4,
                             (Math.random() - 0.5) * 0.5);
                 }
                 if (critFx.get()) {
                     for (int i = 0; i < 8; i++) {
-                        mc.world.addParticleClient(ParticleTypes.ENCHANTED_HIT, x, y, z,
+                        mc.level.addParticle(ParticleTypes.ENCHANTED_HIT, x, y, z,
                                 (Math.random() - 0.5) * 0.3,
                                 Math.random() * 0.3,
                                 (Math.random() - 0.5) * 0.3);

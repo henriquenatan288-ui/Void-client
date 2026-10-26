@@ -2,8 +2,8 @@ package dev.voidclient.modules.movement;
 
 import dev.voidclient.core.Category;
 import dev.voidclient.core.Module;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.network.ClientPlayerEntity;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.player.LocalPlayer;
 
 /**
  * Keeps the player sprinting while the module is enabled.
@@ -20,10 +20,10 @@ public class ToggleSprint extends Module {
 
     @Override
     public void onTick() {
-        MinecraftClient mc = MinecraftClient.getInstance();
+        Minecraft mc = Minecraft.getInstance();
         if (mc == null) return;
 
-        ClientPlayerEntity player = mc.player;
+        LocalPlayer player = mc.player;
         if (player == null) return;
 
         if (!player.isSprinting()) {
@@ -33,7 +33,7 @@ public class ToggleSprint extends Module {
 
     @Override
     protected void onDisable() {
-        MinecraftClient mc = MinecraftClient.getInstance();
+        Minecraft mc = Minecraft.getInstance();
         if (mc == null || mc.player == null) return;
         mc.player.setSprinting(false);
     }

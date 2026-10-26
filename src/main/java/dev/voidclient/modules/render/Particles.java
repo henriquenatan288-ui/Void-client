@@ -4,10 +4,10 @@ import dev.voidclient.VoidClient;
 import dev.voidclient.core.Category;
 import dev.voidclient.core.Module;
 import dev.voidclient.core.setting.ModeSetting;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.particle.ParticleEffect;
-import net.minecraft.particle.ParticleTypes;
+import net.minecraft.client.Minecraft;
+import net.minecraft.core.particles.ParticleOptions;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.world.entity.player.Player;
 
 /** Cosmetic particle patterns around the local player, including on Minimal particle settings. */
 public class Particles extends Module {
@@ -34,9 +34,9 @@ public class Particles extends Module {
 
     @Override
     public void onTick() {
-        MinecraftClient mc = MinecraftClient.getInstance();
-        PlayerEntity player = mc.player;
-        if (player == null || mc.world == null) return;
+        Minecraft mc = Minecraft.getInstance();
+        Player player = mc.player;
+        if (player == null || mc.level == null) return;
         if (++tick % 2 != 0) return;
 
         double x = player.getX();
@@ -57,7 +57,7 @@ public class Particles extends Module {
         }
     }
 
-    private void crown(MinecraftClient mc, double x, double y, double z) {
+    private void crown(Minecraft mc, double x, double y, double z) {
         double phase = tick * 0.22;
         // Wider than the player's head so some motes remain visible around the first-person view.
         for (int i = 0; i < 8; i++) {
@@ -70,7 +70,7 @@ public class Particles extends Module {
         }
     }
 
-    private void sword(MinecraftClient mc, double x, double y, double z) {
+    private void sword(Minecraft mc, double x, double y, double z) {
         double phase = tick * 0.18;
         for (int i = 0; i < 6; i++) {
             double angle = phase + i * (Math.PI * 2.0 / 6.0);
@@ -83,7 +83,7 @@ public class Particles extends Module {
         emit(mc, ParticleTypes.ENCHANTED_HIT, x, y + 1.15, z, 0, 0.04, 0);
     }
 
-    private void totem(MinecraftClient mc, double x, double y, double z) {
+    private void totem(Minecraft mc, double x, double y, double z) {
         for (int i = 0; i < 8; i++) {
             double angle = tick * 0.16 + i * (Math.PI * 2.0 / 8.0);
             emit(mc, ParticleTypes.TOTEM_OF_UNDYING,
@@ -94,12 +94,12 @@ public class Particles extends Module {
         }
     }
 
-    private void emit(MinecraftClient mc, ParticleEffect effect,
+    private void emit(Minecraft mc, ParticleOptions effect,
                       double x, double y, double z,
                       double velocityX, double velocityY, double velocityZ) {
         // Yarn 1.21.11 supports (effect, force, canSpawnOnMinimal, ...).
         // These cosmetic effects should not disappear solely because particles are set to Minimal.
-        mc.world.addParticleClient(effect, true, true,
+        mc.level.addParticle(effect, true, true,
                 x, y, z, velocityX, velocityY, velocityZ);
         if (!loggedFirstSpawn) {
             loggedFirstSpawn = true;

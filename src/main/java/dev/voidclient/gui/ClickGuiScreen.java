@@ -6,15 +6,15 @@ import dev.voidclient.core.Module;
 import dev.voidclient.gui.components.ModuleCard;
 import dev.voidclient.gui.components.SettingsPanel;
 import dev.voidclient.gui.utils.RenderUtils;
-import net.minecraft.client.gui.Click;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.input.KeyInput;
-import net.minecraft.text.Text;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.List;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.network.chat.Component;
 
 public class ClickGuiScreen extends Screen {
 
@@ -30,7 +30,7 @@ public class ClickGuiScreen extends Screen {
     private long lastNs = System.nanoTime();
 
     public ClickGuiScreen() {
-        super(Text.literal("Void Client"));
+        super(Component.literal("Void Client"));
     }
 
     @Override
@@ -57,7 +57,7 @@ public class ClickGuiScreen extends Screen {
     }
 
     @Override
-    public void render(DrawContext context, int mouseX, int mouseY, float tickDelta) {
+    public void render(GuiGraphics context, int mouseX, int mouseY, float tickDelta) {
         float dt = deltaSeconds();
         openAnim = Math.min(1f, openAnim + dt * 6f);
 
@@ -72,8 +72,8 @@ public class ClickGuiScreen extends Screen {
         RenderUtils.fill(context, sx, 0, SIDEBAR_W, height, Theme.BG_SIDEBAR);
         RenderUtils.fill(context, sx + SIDEBAR_W - 1, 0, 1, height, Theme.BORDER);
 
-        RenderUtils.drawText(context, textRenderer, "VOID", sx + 14, 18, Theme.TEXT_PRIMARY, false);
-        RenderUtils.drawText(context, textRenderer, "CLIENT", sx + 14, 30, Theme.TEXT_MUTED, false);
+        RenderUtils.drawText(context, font, "VOID", sx + 14, 18, Theme.TEXT_PRIMARY, false);
+        RenderUtils.drawText(context, font, "CLIENT", sx + 14, 30, Theme.TEXT_MUTED, false);
 
         int cy = 56;
         for (Category cat : Category.values()) {
@@ -88,14 +88,14 @@ public class ClickGuiScreen extends Screen {
             }
 
             int col = sel ? Theme.TEXT_PRIMARY : Theme.TEXT_SECONDARY;
-            RenderUtils.drawText(context, textRenderer, cat.getDisplayName(), sx + 18, cy + 7, col, false);
+            RenderUtils.drawText(context, font, cat.getDisplayName(), sx + 18, cy + 7, col, false);
             cy += 26;
         }
 
         int contentX = SIDEBAR_W + PAD;
         int contentY = PAD + 6 - contentFade;
 
-        RenderUtils.drawText(context, textRenderer, selected.getDisplayName(), contentX, contentY, Theme.TEXT_PRIMARY, false);
+        RenderUtils.drawText(context, font, selected.getDisplayName(), contentX, contentY, Theme.TEXT_PRIMARY, false);
 
         int startY = contentY + 22;
         int col = 0;
@@ -107,7 +107,7 @@ public class ClickGuiScreen extends Screen {
             int cy2 = startY + row * (ModuleCard.HEIGHT + CARD_GAP);
             card.setPosition(cx, cy2);
             card.update(mouseX, mouseY, dt);
-            card.render(context, textRenderer, mouseX, mouseY);
+            card.render(context, font, mouseX, mouseY);
 
             col++;
             if (col >= maxCols) {
@@ -117,21 +117,21 @@ public class ClickGuiScreen extends Screen {
         }
 
         if (cards.isEmpty()) {
-            RenderUtils.drawText(context, textRenderer, "No modules here yet", contentX, startY + 12, Theme.TEXT_MUTED, false);
+            RenderUtils.drawText(context, font, "No modules here yet", contentX, startY + 12, Theme.TEXT_MUTED, false);
         }
 
         if (settingsPanel != null && settingsPanel.isVisible()) {
             settingsPanel.update(dt);
-            settingsPanel.render(context, textRenderer, mouseX, mouseY);
+            settingsPanel.render(context, font, mouseX, mouseY);
         }
 
-        RenderUtils.drawText(context, textRenderer,
+        RenderUtils.drawText(context, font,
                 "RShift close  |  LMB toggle  |  RMB settings",
                 contentX, height - 14, Theme.TEXT_MUTED, false);
     }
 
     @Override
-    public boolean mouseClicked(Click click, boolean doubled) {
+    public boolean mouseClicked(MouseButtonEvent click, boolean doubled) {
         double mouseX = click.x();
         double mouseY = click.y();
         int button = click.button();
@@ -148,7 +148,7 @@ public class ClickGuiScreen extends Screen {
         }
 
         if (settingsPanel != null && settingsPanel.isVisible()) {
-            if (settingsPanel.mouseClicked(mouseX, mouseY, button, textRenderer)) {
+            if (settingsPanel.mouseClicked(mouseX, mouseY, button, font)) {
                 if (!settingsPanel.isVisible()) settingsPanel = null;
                 return true;
             }
@@ -171,25 +171,25 @@ public class ClickGuiScreen extends Screen {
     }
 
     @Override
-    public boolean keyPressed(KeyInput input) {
+    public boolean keyPressed(KeyEvent input) {
         int keyCode = input.key();
         if (keyCode == GLFW.GLFW_KEY_RIGHT_SHIFT || keyCode == GLFW.GLFW_KEY_ESCAPE) {
-            close();
+            onClose();
             return true;
         }
         return super.keyPressed(input);
     }
 
     @Override
-    public boolean shouldPause() {
+    public boolean isPauseScreen() {
         return false;
     }
 
     @Override
-    public void close() {
+    public void onClose() {
         if (VoidClient.CONFIG_MANAGER != null) {
             VoidClient.CONFIG_MANAGER.save();
         }
-        super.close();
+        super.onClose();
     }
 }

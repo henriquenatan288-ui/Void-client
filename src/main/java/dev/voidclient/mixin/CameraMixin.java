@@ -1,10 +1,10 @@
 package dev.voidclient.mixin;
 
 import dev.voidclient.modules.render.CameraControl;
-import net.minecraft.client.render.Camera;
-import net.minecraft.entity.Entity;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.World;
+import net.minecraft.client.Camera;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -16,7 +16,7 @@ public abstract class CameraMixin {
     private static final String UPDATE = "update(Lnet/minecraft/world/World;Lnet/minecraft/entity/Entity;ZZF)V";
 
     @Redirect(method = UPDATE,
-            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/render/Camera;setRotation(FF)V"),
+            at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Camera;setRotation(FF)V"),
             require = 1)
     private void voidclient$redirectCameraRotation(Camera camera, float vanillaYaw, float vanillaPitch) {
         CameraInvoker invoker = (CameraInvoker) (Object) camera;
@@ -28,11 +28,11 @@ public abstract class CameraMixin {
     }
 
     @Inject(method = UPDATE, at = @At("RETURN"))
-    private void voidclient$overrideFreecamPosition(World world, Entity focusedEntity,
+    private void voidclient$overrideFreecamPosition(Level world, Entity focusedEntity,
                                                      boolean thirdPerson, boolean inverseView,
                                                      float tickProgress, CallbackInfo ci) {
         if (!CameraControl.isFreecamActive()) return;
-        Vec3d pos = CameraControl.interpolatedPosition(tickProgress);
+        Vec3 pos = CameraControl.interpolatedPosition(tickProgress);
         CameraInvoker invoker = (CameraInvoker) (Object) this;
         invoker.voidclient$setPos(pos);
         invoker.voidclient$setRotation(CameraControl.getYaw(), CameraControl.getPitch());

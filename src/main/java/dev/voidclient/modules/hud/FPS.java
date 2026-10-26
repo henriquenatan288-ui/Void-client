@@ -5,8 +5,8 @@ import dev.voidclient.core.Module;
 import dev.voidclient.core.setting.BooleanSetting;
 import dev.voidclient.core.setting.ColorSetting;
 import dev.voidclient.core.setting.NumberSetting;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
 
 /**
  * Simple FPS counter on the HUD.
@@ -29,11 +29,11 @@ public class FPS extends Module {
     /**
      * Called from ModuleManager when Render2DEvent is fired.
      */
-    public void render(DrawContext context, float tickDelta) {
-        MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc == null || mc.textRenderer == null || context == null) return;
+    public void render(GuiGraphics context, float tickDelta) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc == null || mc.font == null || context == null) return;
 
-        String text = mc.getCurrentFps() + " FPS";
-        context.drawText(mc.textRenderer, text, x.getInt(), y.getInt(), color.get(), shadow.get());
+        String text = mc.getFps() + " FPS";
+        context.drawString(mc.font, text, x.getInt(), y.getInt(), color.get(), shadow.get());
     }
 }

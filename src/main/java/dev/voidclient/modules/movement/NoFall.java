@@ -2,9 +2,9 @@ package dev.voidclient.modules.movement;
 
 import dev.voidclient.core.Category;
 import dev.voidclient.core.Module;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.network.ClientPlayerEntity;
-import net.minecraft.network.packet.c2s.play.PlayerMoveC2SPacket;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket;
 
 /**
  * Cancels fall damage (client packet reset).
@@ -17,14 +17,14 @@ public class NoFall extends Module {
 
     @Override
     public void onTick() {
-        MinecraftClient mc = MinecraftClient.getInstance();
-        ClientPlayerEntity p = mc.player;
-        if (p == null || mc.getNetworkHandler() == null) return;
+        Minecraft mc = Minecraft.getInstance();
+        LocalPlayer p = mc.player;
+        if (p == null || mc.getConnection() == null) return;
 
         if (p.fallDistance > 2.5f) {
             // Tell server we are on ground to avoid fall damage
-            mc.getNetworkHandler().sendPacket(
-                    new PlayerMoveC2SPacket.OnGroundOnly(true, p.horizontalCollision));
+            mc.getConnection().send(
+                    new ServerboundMovePlayerPacket.StatusOnly(true, p.horizontalCollision));
             p.fallDistance = 0;
         }
     }

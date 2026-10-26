@@ -1,7 +1,7 @@
 package dev.voidclient.core.event.events;
 
 import dev.voidclient.core.event.Event;
-import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.gui.GuiGraphics;
 
 /**
  * Fired every frame for HUD / 2D rendering.
@@ -9,15 +9,15 @@ import net.minecraft.client.gui.DrawContext;
  */
 public class Render2DEvent extends Event {
 
-    private final DrawContext context;
+    private final GuiGraphics context;
     private final float tickDelta;
 
-    public Render2DEvent(DrawContext context, float tickDelta) {
+    public Render2DEvent(GuiGraphics context, float tickDelta) {
         this.context = context;
         this.tickDelta = tickDelta;
     }
 
-    public DrawContext getContext() {
+    public GuiGraphics getContext() {
         return context;
     }
 

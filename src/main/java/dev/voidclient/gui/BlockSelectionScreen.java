@@ -3,14 +3,14 @@ package dev.voidclient.gui;
 import dev.voidclient.core.setting.BlockListSetting;
 import dev.voidclient.gui.utils.RenderUtils;
 import dev.voidclient.modules.render.BlockCatalog;
-import net.minecraft.client.gui.Click;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.input.KeyInput;
-import net.minecraft.text.Text;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.List;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.network.chat.Component;
 
 public final class BlockSelectionScreen extends Screen {
     private static final String[] GROUPS = {"All", "Ores", "Containers", "Utility"};
@@ -25,7 +25,7 @@ public final class BlockSelectionScreen extends Screen {
     private int page;
 
     public BlockSelectionScreen(Screen parent, BlockListSetting setting) {
-        super(Text.literal("Void Client - Select ESP Blocks"));
+        super(Component.literal("Void Client - Select ESP Blocks"));
         this.parent = parent;
         this.setting = setting;
     }
@@ -45,14 +45,14 @@ public final class BlockSelectionScreen extends Screen {
     }
 
     @Override
-    public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
+    public void render(GuiGraphics ctx, int mouseX, int mouseY, float delta) {
         ctx.fill(0, 0, width, height, 0xC8000000);
 
         int x = panelX();
         int y = panelY();
         RenderUtils.drawPanel(ctx, x, y, PANEL_W, PANEL_H, 8, Theme.BG_PANEL);
-        RenderUtils.drawText(ctx, textRenderer, "SELECT ESP BLOCKS", x + 12, y + 10, Theme.TEXT_PRIMARY, false);
-        RenderUtils.drawText(ctx, textRenderer, setting.getSelectedIds().size() + " selected",
+        RenderUtils.drawText(ctx, font, "SELECT ESP BLOCKS", x + 12, y + 10, Theme.TEXT_PRIMARY, false);
+        RenderUtils.drawText(ctx, font, setting.getSelectedIds().size() + " selected",
                 x + PANEL_W - 88, y + 10, Theme.TEXT_MUTED, false);
 
         int tabY = y + 31;
@@ -62,7 +62,7 @@ public final class BlockSelectionScreen extends Screen {
             boolean hovered = RenderUtils.hovered(mouseX, mouseY, tx, tabY, 72, 19);
             int bg = active ? Theme.BG_SELECTED : (hovered ? Theme.BG_CARD_HOVER : Theme.BG_CARD);
             RenderUtils.fillRounded(ctx, tx, tabY, 72, 19, 4, bg);
-            RenderUtils.drawText(ctx, textRenderer, GROUPS[i], tx + 7, tabY + 5,
+            RenderUtils.drawText(ctx, font, GROUPS[i], tx + 7, tabY + 5,
                     active ? Theme.TEXT_PRIMARY : Theme.TEXT_SECONDARY, false);
         }
 
@@ -83,14 +83,14 @@ public final class BlockSelectionScreen extends Screen {
             }
             RenderUtils.outline(ctx, x + 15, ry + 3, 10, 10, active ? Theme.ACCENT : Theme.BORDER);
             if (active) RenderUtils.fillRounded(ctx, x + 17, ry + 5, 6, 6, 2, Theme.ACCENT);
-            RenderUtils.drawText(ctx, textRenderer, option.label(), x + 32, ry + 4,
+            RenderUtils.drawText(ctx, font, option.label(), x + 32, ry + 4,
                     active ? Theme.TEXT_PRIMARY : Theme.TEXT_SECONDARY, false);
-            RenderUtils.drawText(ctx, textRenderer, option.group(), x + PANEL_W - 69, ry + 4,
+            RenderUtils.drawText(ctx, font, option.group(), x + PANEL_W - 69, ry + 4,
                     Theme.TEXT_MUTED, false);
         }
 
         int footerY = y + PANEL_H - 25;
-        RenderUtils.drawText(ctx, textRenderer, "Page " + (page + 1) + "/" + pages,
+        RenderUtils.drawText(ctx, font, "Page " + (page + 1) + "/" + pages,
                 x + 12, footerY + 5, Theme.TEXT_MUTED, false);
         drawButton(ctx, mouseX, mouseY, x + 91, footerY, 48, "CLEAR");
         drawButton(ctx, mouseX, mouseY, x + 143, footerY, 42, "ALL");
@@ -101,14 +101,14 @@ public final class BlockSelectionScreen extends Screen {
         super.render(ctx, mouseX, mouseY, delta);
     }
 
-    private void drawButton(DrawContext ctx, int mouseX, int mouseY, int x, int y, int w, String label) {
+    private void drawButton(GuiGraphics ctx, int mouseX, int mouseY, int x, int y, int w, String label) {
         boolean hovered = RenderUtils.hovered(mouseX, mouseY, x, y, w, 17);
         RenderUtils.fillRounded(ctx, x, y, w, 17, 4, hovered ? Theme.BG_SELECTED : Theme.BG_CARD);
-        RenderUtils.drawText(ctx, textRenderer, label, x + 5, y + 4, Theme.TEXT_PRIMARY, false);
+        RenderUtils.drawText(ctx, font, label, x + 5, y + 4, Theme.TEXT_PRIMARY, false);
     }
 
     @Override
-    public boolean mouseClicked(Click click, boolean doubled) {
+    public boolean mouseClicked(MouseButtonEvent click, boolean doubled) {
         if (click.button() != 0) return super.mouseClicked(click, doubled);
 
         double mx = click.x();
@@ -160,7 +160,7 @@ public final class BlockSelectionScreen extends Screen {
             return true;
         }
         if (RenderUtils.hovered((int) mx, (int) my, x + 281, footerY, 39, 17)) {
-            close();
+            onClose();
             return true;
         }
 
@@ -168,9 +168,9 @@ public final class BlockSelectionScreen extends Screen {
     }
 
     @Override
-    public boolean keyPressed(KeyInput input) {
+    public boolean keyPressed(KeyEvent input) {
         if (input.key() == GLFW.GLFW_KEY_ESCAPE) {
-            close();
+            onClose();
             return true;
         }
         if (input.key() == GLFW.GLFW_KEY_LEFT) {
@@ -186,12 +186,12 @@ public final class BlockSelectionScreen extends Screen {
     }
 
     @Override
-    public void close() {
-        if (client != null) client.setScreen(parent);
+    public void onClose() {
+        if (minecraft != null) minecraft.setScreen(parent);
     }
 
     @Override
-    public boolean shouldPause() {
+    public boolean isPauseScreen() {
         return false;
     }
 }

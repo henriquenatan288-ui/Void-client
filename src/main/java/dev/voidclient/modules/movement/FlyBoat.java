@@ -3,11 +3,11 @@ package dev.voidclient.modules.movement;
 import dev.voidclient.core.Category;
 import dev.voidclient.core.Module;
 import dev.voidclient.core.setting.NumberSetting;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.network.ClientPlayerEntity;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.vehicle.BoatEntity;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.vehicle.boat.Boat;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * Control boat in air / boost speed.
@@ -23,24 +23,24 @@ public class FlyBoat extends Module {
 
     @Override
     public void onTick() {
-        MinecraftClient mc = MinecraftClient.getInstance();
-        ClientPlayerEntity p = mc.player;
+        Minecraft mc = Minecraft.getInstance();
+        LocalPlayer p = mc.player;
         if (p == null) return;
 
         Entity vehicle = p.getVehicle();
-        if (!(vehicle instanceof BoatEntity boat)) return;
+        if (!(vehicle instanceof Boat boat)) return;
 
         float s = speed.getFloat();
-        Vec3d look = p.getRotationVector();
-        Vec3d vel = Vec3d.ZERO;
+        Vec3 look = p.getLookAngle();
+        Vec3 vel = Vec3.ZERO;
 
-        if (mc.options.forwardKey.isPressed()) vel = vel.add(look.multiply(s));
-        if (mc.options.backKey.isPressed()) vel = vel.add(look.multiply(-s * 0.6));
-        if (mc.options.jumpKey.isPressed()) vel = vel.add(0, s, 0);
-        if (mc.options.sneakKey.isPressed()) vel = vel.add(0, -s, 0);
+        if (mc.options.keyUp.isDown()) vel = vel.add(look.scale(s));
+        if (mc.options.keyDown.isDown()) vel = vel.add(look.scale(-s * 0.6));
+        if (mc.options.keyJump.isDown()) vel = vel.add(0, s, 0);
+        if (mc.options.keyShift.isDown()) vel = vel.add(0, -s, 0);
 
-        if (vel.lengthSquared() > 0) {
-            boat.setVelocity(vel);
+        if (vel.lengthSqr() > 0) {
+            boat.setDeltaMovement(vel);
         }
     }
 }

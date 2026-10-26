@@ -1,9 +1,9 @@
 package dev.voidclient.mixin;
 
 import dev.voidclient.modules.render.CameraControl;
-import net.minecraft.client.input.KeyboardInput;
-import net.minecraft.util.PlayerInput;
-import net.minecraft.util.math.Vec2f;
+import net.minecraft.client.player.KeyboardInput;
+import net.minecraft.world.entity.player.Input;
+import net.minecraft.world.phys.Vec2;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -15,7 +15,7 @@ public abstract class InputMixin {
     private void voidclient$stopRealPlayerInput(CallbackInfo ci) {
         if (!CameraControl.isFreecamActive()) return;
         InputAccessor accessor = (InputAccessor) (Object) this;
-        accessor.voidclient$setMovementVector(Vec2f.ZERO);
-        accessor.voidclient$setPlayerInput(PlayerInput.DEFAULT);
+        accessor.voidclient$setMovementVector(Vec2.ZERO);
+        accessor.voidclient$setPlayerInput(Input.EMPTY);
     }
 }
