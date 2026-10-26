@@ -4,32 +4,39 @@ import dev.voidclient.VoidClient;
 import dev.voidclient.core.Category;
 import dev.voidclient.core.Module;
 import dev.voidclient.core.setting.ModeSetting;
+import dev.voidclient.core.setting.NumberSetting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.particles.ParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.world.entity.player.Player;
 
-/** Cosmetic particle patterns around the local player, including on Minimal particle settings. */
+/**
+ * Custom orbiting symbols around the local player.
+ * Distance and quantity are configurable.
+ */
 public class Particles extends Module {
-    private final ModeSetting mode = addSetting(new ModeSetting(
-            "Style", "Particle style", "Crown", "Crown", "Sword", "Totem", "Mix"));
+    private final ModeSetting style = addSetting(new ModeSetting(
+            "Style", "Symbol style", "Rod", "Rod", "Crit", "Enchant", "Mix"));
+    private final NumberSetting distance = addSetting(
+            new NumberSetting("Distance", "Orbit radius around the player", 0.85, 0.4, 2.5, 0.05));
+    private final NumberSetting amount = addSetting(
+            new NumberSetting("Amount", "How many symbols orbit the player", 8, 3, 24, 1));
+    private final NumberSetting speed = addSetting(
+            new NumberSetting("Speed", "Orbit spin speed", 1.0, 0.2, 3.0, 0.1));
+    private final NumberSetting height = addSetting(
+            new NumberSetting("Height", "Vertical center of the orbit", 1.0, 0.2, 2.2, 0.05));
+
     private int tick;
-    private boolean loggedFirstSpawn;
 
     public Particles() {
-        super("Particles", "Show a refreshed particle pattern around your player.", Category.RENDER);
+        super("Particles", "Orbiting symbols around you (distance + amount).", Category.RENDER);
     }
 
     @Override
     protected void onEnable() {
         tick = 0;
-        loggedFirstSpawn = false;
-        VoidClient.LOGGER.info("Particles enabled; style={}", mode.get());
-    }
-
-    @Override
-    protected void onDisable() {
-        loggedFirstSpawn = false;
+        VoidClient.LOGGER.info("Particles enabled; style={} distance={} amount={}",
+                style.get(), distance.get(), amount.getInt());
     }
 
     @Override
@@ -37,74 +44,38 @@ public class Particles extends Module {
         Minecraft mc = Minecraft.getInstance();
         Player player = mc.player;
         if (player == null || mc.level == null) return;
-        if (++tick % 2 != 0) return;
 
+        tick++;
+        // Smooth orbit every tick
         double x = player.getX();
-        double y = player.getY();
+        double y = player.getY() + height.get();
         double z = player.getZ();
-        switch (mode.get()) {
-            case "Crown" -> crown(mc, x, y, z);
-            case "Sword" -> sword(mc, x, y, z);
-            case "Totem" -> totem(mc, x, y, z);
-            case "Mix" -> {
-                switch ((tick / 2) % 3) {
-                    case 0 -> crown(mc, x, y, z);
-                    case 1 -> sword(mc, x, y, z);
-                    default -> totem(mc, x, y, z);
-                }
-            }
-            default -> crown(mc, x, y, z);
+        double radius = distance.get();
+        int count = amount.getInt();
+        double phase = tick * 0.12 * speed.get();
+
+        for (int i = 0; i < count; i++) {
+            double angle = phase + i * (Math.PI * 2.0 / count);
+            double px = x + Math.cos(angle) * radius;
+            double pz = z + Math.sin(angle) * radius;
+            // Slight vertical wave so it feels alive
+            double py = y + Math.sin(angle * 2.0 + phase) * 0.12;
+
+            ParticleOptions effect = pickEffect(i);
+            mc.level.addParticle(effect, true, true, px, py, pz, 0, 0.01, 0);
         }
     }
 
-    private void crown(Minecraft mc, double x, double y, double z) {
-        double phase = tick * 0.22;
-        // Wider than the player's head so some motes remain visible around the first-person view.
-        for (int i = 0; i < 8; i++) {
-            double angle = phase + i * (Math.PI * 2.0 / 8.0);
-            emit(mc, ParticleTypes.END_ROD,
-                    x + Math.cos(angle) * 0.62,
-                    y + 1.48 + Math.sin(angle * 2.0) * 0.12,
-                    z + Math.sin(angle) * 0.62,
-                    0, 0.015, 0);
-        }
-    }
-
-    private void sword(Minecraft mc, double x, double y, double z) {
-        double phase = tick * 0.18;
-        for (int i = 0; i < 6; i++) {
-            double angle = phase + i * (Math.PI * 2.0 / 6.0);
-            emit(mc, ParticleTypes.CRIT,
-                    x + Math.cos(angle) * 0.55,
-                    y + 0.95 + i * 0.1,
-                    z + Math.sin(angle) * 0.55,
-                    0, 0.04, 0);
-        }
-        emit(mc, ParticleTypes.ENCHANTED_HIT, x, y + 1.15, z, 0, 0.04, 0);
-    }
-
-    private void totem(Minecraft mc, double x, double y, double z) {
-        for (int i = 0; i < 8; i++) {
-            double angle = tick * 0.16 + i * (Math.PI * 2.0 / 8.0);
-            emit(mc, ParticleTypes.TOTEM_OF_UNDYING,
-                    x + Math.cos(angle) * 0.65,
-                    y + 0.45 + (i % 3) * 0.35,
-                    z + Math.sin(angle) * 0.65,
-                    0, 0.12, 0);
-        }
-    }
-
-    private void emit(Minecraft mc, ParticleOptions effect,
-                      double x, double y, double z,
-                      double velocityX, double velocityY, double velocityZ) {
-        // Yarn 1.21.11 supports (effect, force, canSpawnOnMinimal, ...).
-        // These cosmetic effects should not disappear solely because particles are set to Minimal.
-        mc.level.addParticle(effect, true, true,
-                x, y, z, velocityX, velocityY, velocityZ);
-        if (!loggedFirstSpawn) {
-            loggedFirstSpawn = true;
-            VoidClient.LOGGER.info("Particles emitted first effect={} at {},{},{}",
-                    effect.getType(), x, y, z);
-        }
+    private ParticleOptions pickEffect(int index) {
+        return switch (style.get()) {
+            case "Crit" -> ParticleTypes.CRIT;
+            case "Enchant" -> ParticleTypes.ENCHANTED_HIT;
+            case "Mix" -> switch (index % 3) {
+                case 0 -> ParticleTypes.END_ROD;
+                case 1 -> ParticleTypes.CRIT;
+                default -> ParticleTypes.ENCHANTED_HIT;
+            };
+            default -> ParticleTypes.END_ROD; // "Rod" – clean white symbol
+        };
     }
 }
