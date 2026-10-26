@@ -23,6 +23,8 @@ import dev.voidclient.modules.movement.Jesus;
 import dev.voidclient.modules.movement.NoFall;
 import dev.voidclient.modules.movement.Speed;
 import dev.voidclient.modules.movement.ToggleSprint;
+import dev.voidclient.modules.personalization.GuiTheme;
+import dev.voidclient.modules.personalization.HudTheme;
 import dev.voidclient.modules.render.BlockESP;
 import dev.voidclient.modules.render.BreakWaves;
 import dev.voidclient.modules.render.Freecam;
@@ -93,6 +95,10 @@ public class ModuleManager {
         register(new DeathCoords());
         register(new NameProtect());
         register(new Panic());
+
+        // Personalization
+        register(new GuiTheme());
+        register(new HudTheme());
 
         // HUD
         register(new FPS());
