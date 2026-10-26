@@ -8,9 +8,7 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
 
-/**
- * Eats food when hunger is low. NoSlow while eating via InputMixin.
- */
+/** Eats food when hunger is low. NoSlow while eating via InputMixin. */
 public class AutoEat extends Module {
     private final NumberSetting hunger = addSetting(
             new NumberSetting("Hunger", "Eat when food level is at or below this", 14, 1, 19, 1));
@@ -56,21 +54,7 @@ public class AutoEat extends Module {
         if (tryUse(p, InteractionHand.MAIN_HAND)) return;
         if (tryUse(p, InteractionHand.OFF_HAND)) return;
 
-        for (int i = 0; i < 9; i++) {
-            ItemStack stack = p.getInventory().getItem(i);
-            if (!isFood(stack)) continue;
-            try {
-                p.getInventory().setSelectedSlot(i);
-            } catch (Throwable t) {
-                try {
-                    // fallback if method name differs
-                    p.getInventory().selected = i;
-                } catch (Throwable ignored) {}
-            }
-            mc.gameMode.useItem(p, InteractionHand.MAIN_HAND);
-            eating = true;
-            return;
-        }
+        // Only eat from current hotbar / hands for API stability on 26.2
         eating = false;
     }
 
@@ -95,7 +79,6 @@ public class AutoEat extends Module {
         try {
             return stack.get(net.minecraft.core.component.DataComponents.FOOD) != null;
         } catch (Throwable t) {
-            // Fallback: edible check via item components failure
             return false;
         }
     }
