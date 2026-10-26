@@ -20,7 +20,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.client.renderer.StagedVertexBuffer;
 import net.minecraft.client.renderer.rendertype.RenderType;
-import net.minecraft.core.BlockPos ins;
+import net.minecraft.core.BlockPos;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4f;
@@ -69,7 +69,6 @@ public final class VoidWorldRenderer {
 
         VertexConsumer builder = STAGED.getVertexBuilder(draw);
 
-        // Partial tick: use current entity positions (stable); full lerp when xo available
         float partialTick = 1.0f;
 
         Module blockMod = VoidClient.MODULE_MANAGER.getByName("BlockESP");
@@ -178,7 +177,6 @@ public final class VoidWorldRenderer {
         Camera cam = Minecraft.getInstance().gameRenderer.mainCamera();
         Vector3fc fwd = cam.forwardVector();
 
-        // Origin = slightly in front of the camera (crosshair), never exactly at eye
         double ox = camera.x + fwd.x() * 0.5;
         double oy = camera.y + fwd.y() * 0.5;
         double oz = camera.z + fwd.z() * 0.5;
@@ -232,7 +230,6 @@ public final class VoidWorldRenderer {
         }
     }
 
-    /** Call from GameRenderer#close if resources need explicit release. */
     public static void close() {
         STAGED.close();
     }
