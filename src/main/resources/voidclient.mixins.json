@@ -6,7 +6,12 @@
   "client": [
     "KeyboardMixin",
     "LivingEntityMixin",
-    "ClientPlayerInteractionManagerMixin"
+    "ClientPlayerInteractionManagerMixin",
+    "SimpleOptionAccessor",
+    "CameraInvoker",
+    "CameraMixin",
+    "EntityLookMixin",
+    "InputMixin"
   ],
   "injectors": {
     "defaultRequire": 1
