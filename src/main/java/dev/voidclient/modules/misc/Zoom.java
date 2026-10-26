@@ -9,7 +9,7 @@ import net.minecraft.client.Minecraft;
 public class Zoom extends Module {
     private final NumberSetting fov = addSetting(
             new NumberSetting("FOV", "Zoom field of view", 30, 10, 70, 1));
-    private double previousFov = -1;
+    private Integer previousFov = null;
 
     public Zoom() {
         super("Zoom", "Zoom in by lowering FOV.", Category.MISC);
@@ -20,23 +20,23 @@ public class Zoom extends Module {
         Minecraft mc = Minecraft.getInstance();
         if (mc.options == null) return;
         previousFov = mc.options.fov().get();
-        mc.options.fov().set((int) fov.get());
+        mc.options.fov().set(Integer.valueOf(fov.getInt()));
     }
 
     @Override
     protected void onDisable() {
         Minecraft mc = Minecraft.getInstance();
-        if (mc.options == null || previousFov < 0) return;
-        mc.options.fov().set((int) previousFov);
-        previousFov = -1;
+        if (mc.options == null || previousFov == null) return;
+        mc.options.fov().set(previousFov);
+        previousFov = null;
     }
 
     @Override
     public void onTick() {
         Minecraft mc = Minecraft.getInstance();
         if (mc.options == null) return;
-        int target = (int) fov.get();
-        if (mc.options.fov().get() != target) {
+        Integer target = Integer.valueOf(fov.getInt());
+        if (!target.equals(mc.options.fov().get())) {
             mc.options.fov().set(target);
         }
     }
