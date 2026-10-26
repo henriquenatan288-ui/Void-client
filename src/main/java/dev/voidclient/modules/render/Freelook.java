@@ -7,13 +7,6 @@ import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 
-/**
- * Rotate camera without rotating the player body.
- * Uses third-person so you see the body while looking around.
- *
- * Causa: rotação só aplica se EntityLookMixin cancelar Entity.turn e CameraMixin
- * sobrescrever setRotation. Perspectiva original deve voltar no onDisable.
- */
 public class Freelook extends Module {
     private CameraType previous;
 
@@ -29,18 +22,14 @@ public class Freelook extends Module {
             setEnabled(false);
             return;
         }
-
-        // Freecam already owns the camera
         if (CameraControl.isFreecamActive()) {
-            VoidClient.LOGGER.info("Freelook blocked while Freecam is active");
             setEnabled(false);
             return;
         }
-
         previous = mc.options.getCameraType();
         CameraControl.startFreelook(player);
         mc.options.setCameraType(CameraType.THIRD_PERSON_BACK);
-        VoidClient.LOGGER.info("Freelook enabled; was {}", previous);
+        VoidClient.LOGGER.info("Freelook enabled");
     }
 
     @Override
@@ -51,7 +40,7 @@ public class Freelook extends Module {
             mc.options.setCameraType(previous);
         }
         previous = null;
-        VoidClient.LOGGER.info("Freelook disabled; perspective restored");
+        VoidClient.LOGGER.info("Freelook disabled");
     }
 
     @Override
@@ -61,10 +50,11 @@ public class Freelook extends Module {
             if (isEnabled()) setEnabled(false);
             return;
         }
-        // Keep third person while active
-        if (CameraControl.isFreelookActive()
-                && mc.options.getCameraType() != CameraType.THIRD_PERSON_BACK) {
+        if (!CameraControl.isFreelookActive()) return;
+
+        if (mc.options.getCameraType() != CameraType.THIRD_PERSON_BACK) {
             mc.options.setCameraType(CameraType.THIRD_PERSON_BACK);
         }
+        CameraControl.tickCapturePlayerLook(mc.player);
     }
 }
