@@ -11,9 +11,9 @@
     "CameraInvoker",
     "CameraMixin",
     "EntityLookMixin",
-    "InputMixin"
+    "InputAccessor",
+    "InputMixin",
+    "PlayerOutlineMixin"
   ],
-  "injectors": {
-    "defaultRequire": 1
-  }
+  "injectors": { "defaultRequire": 1 }
 }

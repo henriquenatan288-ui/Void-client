@@ -1,6 +1,5 @@
 package dev.voidclient.gui;
 
-import dev.voidclient.VoidClient;
 import dev.voidclient.core.setting.BlockListSetting;
 import dev.voidclient.gui.utils.RenderUtils;
 import dev.voidclient.modules.render.BlockCatalog;
@@ -135,7 +134,7 @@ public final class BlockSelectionScreen extends Screen {
             int ry = listY + row * ROW_H;
             if (RenderUtils.hovered((int) mx, (int) my, x + 10, ry, PANEL_W - 20, ROW_H - 1)) {
                 setting.toggle(options.get(i).id());
-                VoidClient.saveConfig();
+                
                 return true;
             }
         }
@@ -143,12 +142,12 @@ public final class BlockSelectionScreen extends Screen {
         int footerY = y + PANEL_H - 25;
         if (RenderUtils.hovered((int) mx, (int) my, x + 91, footerY, 48, 17)) {
             setting.setSelectedIds(List.of());
-            VoidClient.saveConfig();
+            
             return true;
         }
         if (RenderUtils.hovered((int) mx, (int) my, x + 143, footerY, 42, 17)) {
             setting.setSelectedIds(BlockCatalog.OPTIONS.stream().map(BlockCatalog.Option::id).toList());
-            VoidClient.saveConfig();
+            
             return true;
         }
         if (RenderUtils.hovered((int) mx, (int) my, x + 189, footerY, 42, 17)) {

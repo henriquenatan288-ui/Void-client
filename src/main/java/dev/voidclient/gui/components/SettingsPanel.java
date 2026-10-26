@@ -1,6 +1,5 @@
 package dev.voidclient.gui.components;
 
-import dev.voidclient.VoidClient;
 import dev.voidclient.core.Module;
 import dev.voidclient.core.setting.*;
 import dev.voidclient.gui.BlockSelectionScreen;
@@ -140,7 +139,7 @@ public class SettingsPanel {
                 if (RenderUtils.hovered((int) mouseX, (int) mouseY,
                         x + WIDTH - 30, cy - 1, 20, 11)) {
                     booleanSetting.toggle();
-                    VoidClient.saveConfig();
+                    
                     return true;
                 }
                 cy += rowHeight(setting);
@@ -150,14 +149,14 @@ public class SettingsPanel {
                     double pct = Math.max(0, Math.min(1, (mouseX - barX) / (double) barW));
                     numberSetting.set(numberSetting.getMin()
                             + pct * (numberSetting.getMax() - numberSetting.getMin()));
-                    VoidClient.saveConfig();
+                    
                     return true;
                 }
                 cy += rowHeight(setting);
             } else if (setting instanceof ModeSetting modeSetting) {
                 if (RenderUtils.hovered((int) mouseX, (int) mouseY, x, cy, WIDTH, 16)) {
                     modeSetting.cycle();
-                    VoidClient.saveConfig();
+                    
                     return true;
                 }
                 cy += rowHeight(setting);
@@ -168,13 +167,13 @@ public class SettingsPanel {
                     int sx = swatchX + i * 12;
                     if (RenderUtils.hovered((int) mouseX, (int) mouseY, sx, swatchY, 10, 10)) {
                         colorSetting.set(ColorSetting.paletteColor(i));
-                        VoidClient.saveConfig();
+                        
                         return true;
                     }
                 }
                 if (RenderUtils.hovered((int) mouseX, (int) mouseY, x, cy, WIDTH, rowHeight(setting))) {
                     colorSetting.cyclePalette();
-                    VoidClient.saveConfig();
+                    
                     return true;
                 }
                 cy += rowHeight(setting);
