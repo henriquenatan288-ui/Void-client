@@ -28,17 +28,23 @@ import org.joml.Vector3fc;
 import org.joml.Vector4f;
 
 /**
- * ESP + BreakWaves holograms for Minecraft 26.2 (StagedVertexBuffer path).
- * LINES format: Position, Color, Normal, LineWidth.
+ * ESP + BreakWaves for MC 26.2 (StagedVertexBuffer).
+ * LINES: Position + Color + Normal + LineWidth.
+ *
+ * Tracer: origin = same Camera as the frame (mainCamera), pos + look * 0.75.
+ * Fallback: if pipeline/format is null (some mobile GL paths), draw is skipped
+ * and a one-shot log is emitted — boxes will also be missing in that case.
  */
 public final class VoidWorldRenderer {
 
     private static final float LINE_WIDTH = 2.0f;
+    private static final float TRACER_FORWARD = 0.75f;
     private static final Vector4f COLOR_MODULATOR = new Vector4f(1f, 1f, 1f, 1f);
     private static final Vector3f MODEL_OFFSET = new Vector3f();
     private static final Matrix4f TEXTURE_MATRIX = new Matrix4f();
     private static final StagedVertexBuffer STAGED =
             new StagedVertexBuffer(() -> "VoidClient ESP Buffer", RenderType.SMALL_BUFFER_SIZE);
+    private static boolean loggedPipelineFail;
 
     private VoidWorldRenderer() {}
 
@@ -50,7 +56,14 @@ public final class VoidWorldRenderer {
 
         RenderPipeline pipeline = VoidRenderLayers.ESP_LINES_PIPELINE;
         VertexFormat formatBinding = pipeline.getVertexFormatBinding(0);
-        if (formatBinding == null) return;
+        if (formatBinding == null) {
+            if (!loggedPipelineFail) {
+                loggedPipelineFail = true;
+                VoidClient.LOGGER.warn(
+                        "ESP pipeline has no vertex format binding — lines disabled on this renderer");
+            }
+            return;
+        }
 
         StagedVertexBuffer.Draw draw = STAGED.appendDraw(
                 formatBinding,
@@ -59,10 +72,13 @@ public final class VoidWorldRenderer {
         );
 
         PoseStack matrices = context.poseStack();
-        Vec3 camera = context.levelState().cameraRenderState.pos;
+
+        // Use the same camera instance for world origin AND tracer origin
+        Camera cam = mc.gameRenderer.mainCamera();
+        Vec3 cameraPos = cam.position();
 
         matrices.pushPose();
-        matrices.translate(-camera.x, -camera.y, -camera.z);
+        matrices.translate(-cameraPos.x, -cameraPos.y, -cameraPos.z);
         Matrix4f pose = matrices.last().pose();
 
         VertexConsumer builder = STAGED.getVertexBuilder(draw);
@@ -78,7 +94,7 @@ public final class VoidWorldRenderer {
                         pos.getX() + 1, pos.getY() + 1, pos.getZ() + 1,
                         color);
                 if (tracers) {
-                    tracer(builder, pose, camera,
+                    tracer(builder, pose, cam,
                             pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5,
                             color);
                 }
@@ -108,13 +124,12 @@ public final class VoidWorldRenderer {
                 double y = lerpY(other, partialTick);
                 double z = lerpZ(other, partialTick);
                 int color = tracers.getTracerColor(other);
-                tracer(builder, pose, camera,
+                tracer(builder, pose, cam,
                         x, y + other.getBbHeight() * 0.5, z,
                         color);
             }
         }
 
-        // BreakWaves hologram rings (through blocks)
         Module wavesMod = VoidClient.MODULE_MANAGER.getByName("BreakWaves");
         if (wavesMod instanceof BreakWaves breakWaves && breakWaves.isEnabled()) {
             int color = breakWaves.getWaveColor();
@@ -204,19 +219,23 @@ public final class VoidWorldRenderer {
         line(builder, pose, minX, minY, maxZ, minX, maxY, maxZ, r, g, b, a);
     }
 
-    private static void tracer(VertexConsumer builder, Matrix4f pose, Vec3 camera,
+    /**
+     * Tracer starts at crosshair: camera.position + look * TRACER_FORWARD.
+     * Uses the same Camera instance that drives the frame (no bobbing mismatch).
+     */
+    private static void tracer(VertexConsumer builder, Matrix4f pose, Camera cam,
                                double tx, double ty, double tz, int argb) {
         float r = ((argb >> 16) & 0xFF) / 255f;
         float g = ((argb >> 8) & 0xFF) / 255f;
         float b = (argb & 0xFF) / 255f;
         float a = ((argb >> 24) & 0xFF) / 255f;
 
-        Camera cam = Minecraft.getInstance().gameRenderer.mainCamera();
+        Vec3 eye = cam.position();
         Vector3fc fwd = cam.forwardVector();
 
-        double ox = camera.x + fwd.x() * 0.5;
-        double oy = camera.y + fwd.y() * 0.5;
-        double oz = camera.z + fwd.z() * 0.5;
+        double ox = eye.x + fwd.x() * TRACER_FORWARD;
+        double oy = eye.y + fwd.y() * TRACER_FORWARD;
+        double oz = eye.z + fwd.z() * TRACER_FORWARD;
 
         line(builder, pose, ox, oy, oz, tx, ty, tz, r, g, b, a);
     }
