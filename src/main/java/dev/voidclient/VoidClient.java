@@ -15,6 +15,7 @@ import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
 import dev.voidclient.modules.render.VoidWorldRenderer;
 import dev.voidclient.modules.render.VoidRenderLayers;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.text.Text;
@@ -38,6 +39,8 @@ public class VoidClient implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
+        validateEnvironment();
+
         LOGGER.info("{} {} initializing...", NAME, VERSION);
         VoidRenderLayers.bootstrap();
 
@@ -77,6 +80,32 @@ public class VoidClient implements ClientModInitializer {
 
         LOGGER.info("{} initialized. Modules: {}. Press Right Shift for GUI.",
                 NAME, MODULE_MANAGER.getModules().size());
+    }
+
+    private static void validateEnvironment() {
+        int javaVersion = Runtime.version().feature();
+        String minecraftVersion = FabricLoader.getInstance().getGameVersion().getFriendlyString();
+
+        if (javaVersion < 21) {
+            throw new IllegalStateException(
+                "Void Client requires Java 21+. Current Java version: " + javaVersion + ". " +
+                "Install JDK 21 and launch the game with it."
+            );
+        }
+
+        if (javaVersion > 21) {
+            LOGGER.warn(
+                "Void Client is built for Java 21. You are running Java {}. This may cause compatibility issues. Using JDK 21 is recommended.",
+                javaVersion
+            );
+        }
+
+        if (!"1.21.11".equals(minecraftVersion)) {
+            LOGGER.warn(
+                "Void Client targets Minecraft 1.21.11, but you are running {}. Compatibility is not guaranteed.",
+                minecraftVersion
+            );
+        }
     }
 
     private static void toggleClickGui(MinecraftClient client) {
