@@ -39,8 +39,8 @@ public final class VoidWorldRenderer {
         Module tracerModule = VoidClient.MODULE_MANAGER == null ? null
                 : VoidClient.MODULE_MANAGER.getByName("Tracers");
         if (tracerModule instanceof Tracers tracers && tracers.isEnabled()) {
-            int color = tracers.getTracerColor();
             for (AbstractClientPlayerEntity target : tracers.getTargets()) {
+                int color = tracers.getTracerColor(target);
                 Vec3d interpolatedPos = target.getLerpedPos(tickProgress);
                 drawLine(vertices, 0, 0, 0,
                         interpolatedPos.x - cameraPos.x,
