@@ -7,9 +7,9 @@ import net.minecraft.client.renderer.rendertype.RenderSetup;
 import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.resources.Identifier;
 
-/** A line layer explicitly configured to render ESP edges through opaque geometry. */
+/** Line layer configured to draw ESP edges through opaque geometry (no depth). */
 public final class VoidRenderLayers {
-    private static final RenderPipeline ESP_LINES_PIPELINE = RenderPipelines.register(
+    public static final RenderPipeline ESP_LINES_PIPELINE = RenderPipelines.register(
             RenderPipeline.builder(RenderPipelines.LINES_SNIPPET)
                     .withLocation(Identifier.fromNamespaceAndPath("voidclient", "pipeline/esp_lines"))
                     .withDepthStencilState(Optional.empty())
