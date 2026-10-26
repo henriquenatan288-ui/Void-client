@@ -28,9 +28,8 @@ import org.joml.Vector3fc;
 import org.joml.Vector4f;
 
 /**
- * ESP drawing for Minecraft 26.2 using the official extract → submit path.
- *
- * LINES format requires: Position, Color, Normal, LineWidth.
+ * ESP + BreakWaves holograms for Minecraft 26.2 (StagedVertexBuffer path).
+ * LINES format: Position, Color, Normal, LineWidth.
  */
 public final class VoidWorldRenderer {
 
@@ -67,7 +66,6 @@ public final class VoidWorldRenderer {
         Matrix4f pose = matrices.last().pose();
 
         VertexConsumer builder = STAGED.getVertexBuilder(draw);
-
         float partialTick = 1.0f;
 
         Module blockMod = VoidClient.MODULE_MANAGER.getByName("BlockESP");
@@ -116,6 +114,26 @@ public final class VoidWorldRenderer {
             }
         }
 
+        // BreakWaves hologram rings (through blocks)
+        Module wavesMod = VoidClient.MODULE_MANAGER.getByName("BreakWaves");
+        if (wavesMod instanceof BreakWaves breakWaves && breakWaves.isEnabled()) {
+            int color = breakWaves.getWaveColor();
+            int ringCount = breakWaves.getWaveCount();
+            int maxAge = Math.max(1, breakWaves.getMaxAge());
+            for (BreakWaves.Wave wave : breakWaves.getActiveWaves()) {
+                for (int ring = 0; ring < ringCount; ring++) {
+                    int age = wave.age - ring * 3;
+                    if (age < 0 || age > maxAge) continue;
+                    float fade = 1.0f - (age / (float) maxAge);
+                    int a = (int) ((((color >>> 24) & 0xFF) * fade));
+                    int rgb = color & 0x00FFFFFF;
+                    int faded = (Math.max(20, a) << 24) | rgb;
+                    double radius = age * 0.28 + 0.15;
+                    ring(builder, pose, wave.x, wave.y, wave.z, radius, 24, faded);
+                }
+            }
+        }
+
         matrices.popPose();
 
         STAGED.upload();
@@ -139,6 +157,26 @@ public final class VoidWorldRenderer {
     private static double lerpZ(AbstractClientPlayer e, float pt) {
         try { return Mth.lerp(pt, e.zo, e.getZ()); }
         catch (Throwable t) { return e.getZ(); }
+    }
+
+    private static void ring(VertexConsumer builder, Matrix4f pose,
+                             double cx, double cy, double cz,
+                             double radius, int segments, int argb) {
+        float r = ((argb >> 16) & 0xFF) / 255f;
+        float g = ((argb >> 8) & 0xFF) / 255f;
+        float b = (argb & 0xFF) / 255f;
+        float a = ((argb >> 24) & 0xFF) / 255f;
+
+        double prevX = cx + radius;
+        double prevZ = cz;
+        for (int i = 1; i <= segments; i++) {
+            double angle = (Math.PI * 2.0) * i / segments;
+            double x = cx + Math.cos(angle) * radius;
+            double z = cz + Math.sin(angle) * radius;
+            line(builder, pose, prevX, cy, prevZ, x, cy, z, r, g, b, a);
+            prevX = x;
+            prevZ = z;
+        }
     }
 
     private static void boxEdges(VertexConsumer builder, Matrix4f pose,
@@ -183,10 +221,6 @@ public final class VoidWorldRenderer {
         line(builder, pose, ox, oy, oz, tx, ty, tz, r, g, b, a);
     }
 
-    /**
-     * LINES vertex format: Position + Color + Normal + LineWidth.
-     * Both endpoints share the same direction normal.
-     */
     private static void line(VertexConsumer builder, Matrix4f pose,
                              double x1, double y1, double z1,
                              double x2, double y2, double z2,
