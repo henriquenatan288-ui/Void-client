@@ -2,10 +2,16 @@ package dev.voidclient.core.setting;
 
 /** Stores color as ARGB int (0xAARRGGBB). */
 public class ColorSetting extends Setting<Integer> {
+    /** Bright accents + dark glass blacks for theme picking. */
     private static final int[] PALETTE = {
+            // Accents
             0xFFFF5555, 0xFFFFAA00, 0xFFFFFF55,
             0xFF55FF55, 0xFF00FFAA, 0xFF55FFFF,
-            0xFF5599FF, 0xFFAA00FF, 0xFFFFFFFF
+            0xFF5599FF, 0xFFAA00FF, 0xFFE8E8E8,
+            // Dark glass / blacks (more translucent → more solid)
+            0x80000000, 0xA0080808, 0xC00C0C0C,
+            0xE0101010, 0xF0141414, 0xFF1A1A1A,
+            0xFF222222, 0xFF2A2A2A, 0xFF000000
     };
 
     public ColorSetting(String name, String description, int defaultArgb) {
@@ -35,7 +41,7 @@ public class ColorSetting extends Setting<Integer> {
     }
 
     public static int paletteColor(int index) {
-        return PALETTE[index];
+        return PALETTE[Math.floorMod(index, PALETTE.length)];
     }
 
     public static int paletteIndex(int color) {
