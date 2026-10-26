@@ -19,11 +19,12 @@ public abstract class ClientWorldMixin {
     private void voidclient$onBlockSetToAir(
             BlockPos pos, BlockState newState, int flags, int maxUpdateDepth,
             CallbackInfoReturnable<Boolean> cir) {
-        if (!newState.isAir()) return;
-
         ClientWorld world = (ClientWorld) (Object) this;
-        if (!world.getBlockState(pos).isAir()) {
-            BreakWaves.onClientBlockChangedToAir(pos);
+        BlockState oldState = world.getBlockState(pos);
+        boolean blockWasRemoved = !oldState.isAir()
+                && (newState.isAir() || oldState.getBlock() != newState.getBlock());
+        if (blockWasRemoved) {
+            BreakWaves.onClientBlockRemoved(pos);
         }
     }
 }
