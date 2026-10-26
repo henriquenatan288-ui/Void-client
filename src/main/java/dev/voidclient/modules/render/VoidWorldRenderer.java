@@ -11,7 +11,6 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import dev.voidclient.VoidClient;
 import dev.voidclient.core.Module;
-import java.util.List;
 import java.util.Optional;
 import java.util.OptionalDouble;
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext;
@@ -31,11 +30,11 @@ import org.joml.Vector4f;
 /**
  * ESP drawing for Minecraft 26.2 using the official extract → submit path.
  *
- * Pattern follows Fabric docs "Rendering in the World":
- * StagedVertexBuffer + custom no-depth RenderPipeline.
+ * LINES format requires: Position, Color, Normal, LineWidth.
  */
 public final class VoidWorldRenderer {
 
+    private static final float LINE_WIDTH = 2.0f;
     private static final Vector4f COLOR_MODULATOR = new Vector4f(1f, 1f, 1f, 1f);
     private static final Vector3f MODEL_OFFSET = new Vector3f();
     private static final Matrix4f TEXTURE_MATRIX = new Matrix4f();
@@ -184,6 +183,10 @@ public final class VoidWorldRenderer {
         line(builder, pose, ox, oy, oz, tx, ty, tz, r, g, b, a);
     }
 
+    /**
+     * LINES vertex format: Position + Color + Normal + LineWidth.
+     * Both endpoints share the same direction normal.
+     */
     private static void line(VertexConsumer builder, Matrix4f pose,
                              double x1, double y1, double z1,
                              double x2, double y2, double z2,
@@ -199,10 +202,12 @@ public final class VoidWorldRenderer {
 
         builder.addVertex(pose, (float) x1, (float) y1, (float) z1)
                 .setColor(r, g, b, a)
-                .setNormal(nx, ny, nz);
+                .setNormal(nx, ny, nz)
+                .setLineWidth(LINE_WIDTH);
         builder.addVertex(pose, (float) x2, (float) y2, (float) z2)
                 .setColor(r, g, b, a)
-                .setNormal(nx, ny, nz);
+                .setNormal(nx, ny, nz)
+                .setLineWidth(LINE_WIDTH);
     }
 
     private static void submit(Minecraft client, StagedVertexBuffer.ExecuteInfo info, RenderPipeline pipeline) {
