@@ -30,6 +30,6 @@ public class Watermark extends Module {
         if (mc.font == null) return;
 
         String text = "Void Client " + VoidClient.VERSION + " §7| §fbisteck";
-        ctx.drawString(mc.font, text, x.getInt(), y.getInt(), color.get(), true);
+        ctx.text(mc.font, text, x.getInt(), y.getInt(), color.get(), true);
     }
 }

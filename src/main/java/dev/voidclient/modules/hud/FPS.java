@@ -34,6 +34,6 @@ public class FPS extends Module {
         if (mc == null || mc.font == null || context == null) return;
 
         String text = mc.getFps() + " FPS";
-        context.drawString(mc.font, text, x.getInt(), y.getInt(), color.get(), shadow.get());
+        context.text(mc.font, text, x.getInt(), y.getInt(), color.get(), shadow.get());
     }
 }

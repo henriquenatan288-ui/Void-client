@@ -230,7 +230,7 @@ public class BlockESP extends Module {
     public void renderHud(GuiGraphicsExtractor ctx, float tickDelta) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.font == null) return;
-        ctx.drawString(mc.font,
+        ctx.text(mc.font,
                 "BlockESP: " + found.size() + " found / " + blocks.getSelectedIds().size() + " selected",
                 4, 40, color.get(), true);
     }

@@ -47,7 +47,7 @@ public class ArrayListHud extends Module {
         int drawX = x.getInt();
         int textColor = color.get();
         for (Module module : cachedEnabled) {
-            ctx.drawString(mc.font, module.getName(), drawX, drawY, textColor, true);
+            ctx.text(mc.font, module.getName(), drawX, drawY, textColor, true);
             drawY += 10;
         }
     }

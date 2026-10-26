@@ -64,7 +64,7 @@ public class PlayerESP extends Module {
         for (AbstractClientPlayer other : targets) {
             double distance = Math.sqrt(mc.player.distanceToSqr(other));
             String label = other.getName().getString() + " [" + (int) distance + "m]";
-            ctx.drawString(mc.font, label, 4, y, color.get(), true);
+            ctx.text(mc.font, label, 4, y, color.get(), true);
             y += 10;
         }
     }

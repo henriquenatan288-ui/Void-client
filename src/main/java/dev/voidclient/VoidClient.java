@@ -83,7 +83,7 @@ public class VoidClient implements ClientModInitializer {
     private static void toggleClickGui(Minecraft client) {
         if (client == null) return;
         if (client.gui.screen() instanceof ClickGuiScreen) {
-            client.screen.onClose();
+            client.gui.screen().onClose();
             return;
         }
         if (client.gui.screen() == null) {
