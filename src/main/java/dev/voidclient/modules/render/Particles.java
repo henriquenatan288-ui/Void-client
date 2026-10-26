@@ -1,77 +1,110 @@
 package dev.voidclient.modules.render;
 
+import dev.voidclient.VoidClient;
 import dev.voidclient.core.Category;
 import dev.voidclient.core.Module;
 import dev.voidclient.core.setting.ModeSetting;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.particle.ParticleEffect;
 import net.minecraft.particle.ParticleTypes;
 
-/**
- * Cosmetic particles: Crown / Sword / Totem / Mix around the player.
- */
+/** Cosmetic particle patterns around the local player, including on Minimal particle settings. */
 public class Particles extends Module {
-
     private final ModeSetting mode = addSetting(new ModeSetting(
-            "Style", "Particle style",
-            "Crown",
-            "Crown", "Sword", "Totem", "Mix"));
-
+            "Style", "Particle style", "Crown", "Crown", "Sword", "Totem", "Mix"));
     private int tick;
+    private boolean loggedFirstSpawn;
 
     public Particles() {
-        super("Particles", "Crown / Sword / Totem / Mix particles.", Category.RENDER);
+        super("Particles", "Show a refreshed particle pattern around your player.", Category.RENDER);
+    }
+
+    @Override
+    protected void onEnable() {
+        tick = 0;
+        loggedFirstSpawn = false;
+        VoidClient.LOGGER.info("Particles enabled; style={}", mode.get());
+    }
+
+    @Override
+    protected void onDisable() {
+        loggedFirstSpawn = false;
     }
 
     @Override
     public void onTick() {
         MinecraftClient mc = MinecraftClient.getInstance();
-        PlayerEntity p = mc.player;
-        if (p == null || mc.world == null) return;
+        PlayerEntity player = mc.player;
+        if (player == null || mc.world == null) return;
+        if (++tick % 2 != 0) return;
 
-        tick++;
-        if (tick % 3 != 0) return;
-
-        double x = p.getX();
-        double y = p.getY() + 1.0;
-        double z = p.getZ();
-        String m = mode.get();
-
-        switch (m) {
+        double x = player.getX();
+        double y = player.getY();
+        double z = player.getZ();
+        switch (mode.get()) {
             case "Crown" -> crown(mc, x, y, z);
             case "Sword" -> sword(mc, x, y, z);
             case "Totem" -> totem(mc, x, y, z);
             case "Mix" -> {
-                if (tick % 12 < 4) crown(mc, x, y, z);
-                else if (tick % 12 < 8) sword(mc, x, y, z);
-                else totem(mc, x, y, z);
+                switch ((tick / 2) % 3) {
+                    case 0 -> crown(mc, x, y, z);
+                    case 1 -> sword(mc, x, y, z);
+                    default -> totem(mc, x, y, z);
+                }
             }
             default -> crown(mc, x, y, z);
         }
     }
 
     private void crown(MinecraftClient mc, double x, double y, double z) {
-        double t = tick * 0.25;
-        for (int i = 0; i < 6; i++) {
-            double a = t + i * (Math.PI * 2 / 6);
-            mc.world.addParticleClient(ParticleTypes.END_ROD,
-                    x + Math.cos(a) * 0.6,
-                    y + 1.2,
-                    z + Math.sin(a) * 0.6,
-                    0, 0.02, 0);
+        double phase = tick * 0.22;
+        // Wider than the player's head so some motes remain visible around the first-person view.
+        for (int i = 0; i < 8; i++) {
+            double angle = phase + i * (Math.PI * 2.0 / 8.0);
+            emit(mc, ParticleTypes.END_ROD,
+                    x + Math.cos(angle) * 0.62,
+                    y + 1.48 + Math.sin(angle * 2.0) * 0.12,
+                    z + Math.sin(angle) * 0.62,
+                    0, 0.015, 0);
         }
     }
 
     private void sword(MinecraftClient mc, double x, double y, double z) {
-        mc.world.addParticleClient(ParticleTypes.CRIT, x, y + 0.5, z, 0, 0.1, 0);
-        mc.world.addParticleClient(ParticleTypes.ENCHANTED_HIT, x, y + 0.8, z, 0, 0.05, 0);
+        double phase = tick * 0.18;
+        for (int i = 0; i < 6; i++) {
+            double angle = phase + i * (Math.PI * 2.0 / 6.0);
+            emit(mc, ParticleTypes.CRIT,
+                    x + Math.cos(angle) * 0.55,
+                    y + 0.95 + i * 0.1,
+                    z + Math.sin(angle) * 0.55,
+                    0, 0.04, 0);
+        }
+        emit(mc, ParticleTypes.ENCHANTED_HIT, x, y + 1.15, z, 0, 0.04, 0);
     }
 
     private void totem(MinecraftClient mc, double x, double y, double z) {
-        mc.world.addParticleClient(ParticleTypes.TOTEM_OF_UNDYING,
-                x, y + 0.5, z,
-                (Math.random() - 0.5) * 0.3,
-                0.2,
-                (Math.random() - 0.5) * 0.3);
+        for (int i = 0; i < 8; i++) {
+            double angle = tick * 0.16 + i * (Math.PI * 2.0 / 8.0);
+            emit(mc, ParticleTypes.TOTEM_OF_UNDYING,
+                    x + Math.cos(angle) * 0.65,
+                    y + 0.45 + (i % 3) * 0.35,
+                    z + Math.sin(angle) * 0.65,
+                    0, 0.12, 0);
+        }
+    }
+
+    private void emit(MinecraftClient mc, ParticleEffect effect,
+                      double x, double y, double z,
+                      double velocityX, double velocityY, double velocityZ) {
+        // Yarn 1.21.11 supports (effect, force, canSpawnOnMinimal, ...).
+        // These cosmetic effects should not disappear solely because particles are set to Minimal.
+        mc.world.addParticleClient(effect, true, true,
+                x, y, z, velocityX, velocityY, velocityZ);
+        if (!loggedFirstSpawn) {
+            loggedFirstSpawn = true;
+            VoidClient.LOGGER.info("Particles emitted first effect={} at {},{},{}",
+                    effect.getType(), x, y, z);
+        }
     }
 }

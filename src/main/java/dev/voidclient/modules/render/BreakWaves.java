@@ -1,11 +1,12 @@
 package dev.voidclient.modules.render;
 
+import dev.voidclient.VoidClient;
 import dev.voidclient.core.Category;
 import dev.voidclient.core.Module;
 import dev.voidclient.core.setting.ColorSetting;
 import dev.voidclient.core.setting.NumberSetting;
-import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.world.ClientWorld;
 import net.minecraft.particle.DustParticleEffect;
 import net.minecraft.util.math.BlockPos;
 
@@ -13,80 +14,135 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-/**
- * Expanding wave rings when a block is broken.
- */
+/** Expanding rings triggered when the locally tracked block changes to air. */
 public class BreakWaves extends Module {
-
     private final NumberSetting waves = addSetting(
-            new NumberSetting("Waves", "Number of waves", 3, 1, 6, 1));
-
+            new NumberSetting("Waves", "Number of expanding rings", 3, 1, 6, 1));
     private final ColorSetting color = addSetting(
             new ColorSetting("Color", "Wave color", 0xFFFFFFFF));
 
     private final List<Wave> active = new ArrayList<>();
-    private static boolean registered;
+    private static BlockPos trackedTarget;
+    private static ClientWorld trackedWorld;
+    private static long targetTrackedAt = Long.MIN_VALUE;
 
     public BreakWaves() {
-        super("BreakWaves", "Waves when you break a block.", Category.RENDER);
-        if (!registered) {
-            registered = true;
-            PlayerBlockBreakEvents.AFTER.register((world, player, pos, state, entity) -> {
-                MinecraftClient mc = MinecraftClient.getInstance();
-                if (mc.player == null || player != mc.player) return;
-                if (dev.voidclient.VoidClient.MODULE_MANAGER == null) return;
-                Module m = dev.voidclient.VoidClient.MODULE_MANAGER.getByName("BreakWaves");
-                if (m instanceof BreakWaves bw && bw.isEnabled()) {
-                    bw.spawn(pos);
-                }
-            });
+        super("BreakWaves", "Show expanding rings when you break a block.", Category.RENDER);
+    }
+
+    /** Called by interaction-manager hooks while the local player is mining a block. */
+    public static void trackBlockBreakTarget(BlockPos pos) {
+        if (pos == null || VoidClient.MODULE_MANAGER == null) return;
+        Module module = VoidClient.MODULE_MANAGER.getByName("BreakWaves");
+        if (!(module instanceof BreakWaves breakWaves) || !breakWaves.isEnabled()) return;
+
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc.world == null) return;
+        BlockPos immutablePos = pos.toImmutable();
+        if (!immutablePos.equals(trackedTarget) || trackedWorld != mc.world) {
+            VoidClient.LOGGER.info("BreakWaves tracking mining target {}", immutablePos);
         }
+        trackedTarget = immutablePos;
+        trackedWorld = mc.world;
+        targetTrackedAt = mc.world.getTime();
+    }
+
+    /**
+     * Called before ClientWorld applies a block-state update. This catches survival mining
+     * too, where the server confirms the break asynchronously rather than in breakBlock().
+     */
+    public static void onClientBlockRemoved(BlockPos pos) {
+        if (pos == null || trackedTarget == null || !trackedTarget.equals(pos)) return;
+
+        MinecraftClient mc = MinecraftClient.getInstance();
+        if (mc.world == null || mc.world != trackedWorld) {
+            clearTrackedTarget();
+            return;
+        }
+
+        long age = mc.world.getTime() - targetTrackedAt;
+        VoidClient.LOGGER.info("BreakWaves saw air update at tracked block {}, age={} ticks", pos, age);
+        if (age < 0 || age > 40) {
+            clearTrackedTarget();
+            return;
+        }
+
+        Module module = VoidClient.MODULE_MANAGER == null
+                ? null : VoidClient.MODULE_MANAGER.getByName("BreakWaves");
+        if (module instanceof BreakWaves breakWaves && breakWaves.isEnabled()) {
+            breakWaves.spawn(pos);
+        }
+        clearTrackedTarget();
+    }
+
+    private static void clearTrackedTarget() {
+        trackedTarget = null;
+        trackedWorld = null;
+        targetTrackedAt = Long.MIN_VALUE;
     }
 
     private void spawn(BlockPos pos) {
-        active.add(new Wave(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5));
+        if (active.size() >= 4) active.remove(0);
+        active.add(new Wave(pos.getX() + 0.5, pos.getY() + 0.05, pos.getZ() + 0.5));
+        VoidClient.LOGGER.info("BreakWaves: created wave at {}", pos);
+    }
+
+    @Override
+    protected void onEnable() {
+        active.clear();
+        clearTrackedTarget();
+        VoidClient.LOGGER.info("BreakWaves enabled");
+    }
+
+    @Override
+    protected void onDisable() {
+        active.clear();
+        clearTrackedTarget();
     }
 
     @Override
     public void onTick() {
         MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc.world == null) {
+        if (mc.world == null || mc.player == null) {
             active.clear();
+            clearTrackedTarget();
             return;
         }
 
-        int rgb = color.get() & 0x00FFFFFF;
-        DustParticleEffect dust = new DustParticleEffect(rgb, 0.8f);
+        if (trackedTarget != null && (trackedWorld != mc.world
+                || mc.world.getTime() - targetTrackedAt > 40)) {
+            clearTrackedTarget();
+        }
+        if (active.isEmpty()) return;
 
+        DustParticleEffect dust = new DustParticleEffect(color.getRgb(), 0.9f);
         int maxWaves = waves.getInt();
-        Iterator<Wave> it = active.iterator();
-        while (it.hasNext()) {
-            Wave w = it.next();
-            w.age++;
+        Iterator<Wave> iterator = active.iterator();
+        while (iterator.hasNext()) {
+            Wave wave = iterator.next();
+            wave.age++;
 
             for (int ring = 0; ring < maxWaves; ring++) {
-                int localAge = w.age - ring * 3;
-                if (localAge < 0 || localAge > 12) continue;
-                double radius = localAge * 0.35;
-                int points = 16;
+                int age = wave.age - ring * 3;
+                if (age < 0 || age > 12) continue;
+                double radius = age * 0.32;
+                int points = 14;
                 for (int i = 0; i < points; i++) {
-                    double a = (Math.PI * 2 * i) / points;
-                    mc.world.addParticleClient(dust,
-                            w.x + Math.cos(a) * radius,
-                            w.y,
-                            w.z + Math.sin(a) * radius,
-                            0, 0.01, 0);
+                    double angle = Math.PI * 2.0 * i / points;
+                    mc.world.addParticleClient(dust, true, true,
+                            wave.x + Math.cos(angle) * radius,
+                            wave.y + 0.03,
+                            wave.z + Math.sin(angle) * radius,
+                            0, 0.005, 0);
                 }
             }
-
-            if (w.age > 12 + maxWaves * 3) it.remove();
+            if (wave.age > 12 + maxWaves * 3) iterator.remove();
         }
     }
 
-    private static class Wave {
+    private static final class Wave {
         final double x, y, z;
         int age;
-
         Wave(double x, double y, double z) {
             this.x = x;
             this.y = y;

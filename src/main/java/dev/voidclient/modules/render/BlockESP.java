@@ -2,137 +2,237 @@ package dev.voidclient.modules.render;
 
 import dev.voidclient.core.Category;
 import dev.voidclient.core.Module;
+import dev.voidclient.core.setting.BlockListSetting;
 import dev.voidclient.core.setting.BooleanSetting;
 import dev.voidclient.core.setting.ColorSetting;
-import dev.voidclient.core.setting.ModeSetting;
 import dev.voidclient.core.setting.NumberSetting;
 import net.minecraft.block.Block;
-import net.minecraft.block.Blocks;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
-import net.minecraft.particle.DustParticleEffect;
+import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.util.math.BlockPos;
 
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.PriorityQueue;
+import java.util.Set;
 
-/**
- * Highlights selected blocks nearby (particle outline + tracers).
- */
+/** Cached block scan with an exact nearest-first result set; the 3D renderer draws boxes/lines. */
 public class BlockESP extends Module {
+    private static final int MAX_STORED_BLOCKS = 160;
+    private static final int SCAN_BUDGET_PER_TICK = 2800;
+    private static final int RESCAN_DELAY_TICKS = 10;
 
-    private final ModeSetting preset = addSetting(new ModeSetting(
-            "Blocks", "Which blocks to highlight",
-            "Ores",
-            "Ores", "Chests", "Spawners", "Portals", "All Utility"));
+    private static final String DEFAULT_BLOCKS =
+            "diamond_ore,deepslate_diamond_ore,emerald_ore,deepslate_emerald_ore,"
+            + "gold_ore,deepslate_gold_ore,iron_ore,deepslate_iron_ore,"
+            + "lapis_ore,deepslate_lapis_ore,redstone_ore,deepslate_redstone_ore,"
+            + "coal_ore,deepslate_coal_ore,copper_ore,deepslate_copper_ore,"
+            + "nether_quartz_ore,nether_gold_ore,ancient_debris";
 
+    private final BlockListSetting blocks = addSetting(new BlockListSetting(
+            "Blocks", "Open the block picker to choose exact blocks", DEFAULT_BLOCKS));
     private final NumberSetting range = addSetting(
-            new NumberSetting("Range", "Scan radius", 32, 8, 64, 1));
-
+            new NumberSetting("Range", "Scan radius in blocks", 16, 4, 32, 1));
     private final ColorSetting color = addSetting(
-            new ColorSetting("Color", "ESP color", 0xFFAA00FF));
-
+            new ColorSetting("Color", "ESP box and tracer color", 0xFFAA00FF));
     private final BooleanSetting tracers = addSetting(
-            new BooleanSetting("Tracers", "Particle tracers to blocks", true));
+            new BooleanSetting("Tracers", "Draw a line from the camera to selected blocks", true));
 
-    private final List<BlockPos> found = new ArrayList<>();
-    private int scanTicker;
+    private final List<BlockPos> found = new ArrayList<>(MAX_STORED_BLOCKS);
+    private final PriorityQueue<ScanHit> nearest = new PriorityQueue<>(
+            Comparator.comparingDouble(ScanHit::distanceSquared).reversed());
+    private final BlockPos.Mutable scanMutable = new BlockPos.Mutable();
+    private Set<Block> scanSelectedBlocks = Set.of();
+    private int scanCursor;
+    private List<ScanRow> scanRows = List.of();
+    private int scanRowCursor;
+    private int scanXCursor;
+    private int scanRange = -1;
+    private String scanSelection = "";
+    private int scanDelay;
+    private BlockPos scanOrigin;
 
     public BlockESP() {
-        super("BlockESP", "ESP for chosen blocks + tracers.", Category.RENDER);
+        super("BlockESP", "Highlight exact selected blocks with 3D boxes.", Category.RENDER);
+    }
+
+    @Override
+    protected void onEnable() {
+        scanCursor = 0;
+        scanRows = List.of();
+        scanRowCursor = 0;
+        scanXCursor = 0;
+        scanDelay = 0;
+        scanOrigin = null;
+    }
+
+    @Override
+    protected void onDisable() {
+        scanCursor = 0;
+        scanRows = List.of();
+        scanRowCursor = 0;
+        scanXCursor = 0;
+        scanOrigin = null;
+        nearest.clear();
+        found.clear();
     }
 
     @Override
     public void onTick() {
         MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc.player == null || mc.world == null) return;
-
-        scanTicker++;
-        if (scanTicker % 10 != 0) {
-            spawnParticles(mc);
+        ClientPlayerEntity player = mc.player;
+        if (player == null || mc.world == null) {
+            found.clear();
+            nearest.clear();
+            scanCursor = 0;
+            scanRows = List.of();
+            scanRowCursor = 0;
+            scanXCursor = 0;
+            scanOrigin = null;
             return;
         }
 
-        found.clear();
-        int r = range.getInt();
-        BlockPos origin = mc.player.getBlockPos();
+        int radius = range.getInt();
+        String selected = blocks.get();
+        if (radius != scanRange || !selected.equals(scanSelection)) {
+            scanRange = radius;
+            scanSelection = selected;
+            scanCursor = 0;
+            scanRows = List.of();
+            scanRowCursor = 0;
+            scanXCursor = 0;
+            scanOrigin = null;
+            scanDelay = 0;
+            nearest.clear();
+        }
 
-        for (int x = -r; x <= r; x++) {
-            for (int y = -r; y <= r; y++) {
-                for (int z = -r; z <= r; z++) {
-                    BlockPos pos = origin.add(x, y, z);
-                    Block block = mc.world.getBlockState(pos).getBlock();
-                    if (matches(block)) {
-                        found.add(pos.toImmutable());
-                    }
-                }
+        if (scanOrigin != null) {
+            BlockPos playerPos = player.getBlockPos();
+            double dx = playerPos.getX() - scanOrigin.getX();
+            double dy = playerPos.getY() - scanOrigin.getY();
+            double dz = playerPos.getZ() - scanOrigin.getZ();
+            double restartDistance = Math.max(4.0, radius / 2.0);
+            if (dx * dx + dy * dy + dz * dz > restartDistance * restartDistance) {
+                scanCursor = 0;
+                scanRows = List.of();
+                scanRowCursor = 0;
+                scanXCursor = 0;
+                scanOrigin = null;
+                scanDelay = 0;
+                nearest.clear();
             }
         }
-        spawnParticles(mc);
-    }
 
-    private boolean matches(Block block) {
-        return switch (preset.get()) {
-            case "Ores" -> isOre(block);
-            case "Chests" -> block == Blocks.CHEST || block == Blocks.TRAPPED_CHEST
-                    || block == Blocks.ENDER_CHEST || block == Blocks.BARREL
-                    || block == Blocks.SHULKER_BOX;
-            case "Spawners" -> block == Blocks.SPAWNER;
-            case "Portals" -> block == Blocks.NETHER_PORTAL || block == Blocks.END_PORTAL
-                    || block == Blocks.END_PORTAL_FRAME;
-            case "All Utility" -> isOre(block) || block == Blocks.CHEST || block == Blocks.SPAWNER
-                    || block == Blocks.ENDER_CHEST || block == Blocks.NETHER_PORTAL;
-            default -> false;
-        };
-    }
+        if (scanCursor == 0 && scanDelay > 0) {
+            scanDelay--;
+            return;
+        }
 
-    private static boolean isOre(Block b) {
-        return b == Blocks.DIAMOND_ORE || b == Blocks.DEEPSLATE_DIAMOND_ORE
-                || b == Blocks.ANCIENT_DEBRIS
-                || b == Blocks.EMERALD_ORE || b == Blocks.DEEPSLATE_EMERALD_ORE
-                || b == Blocks.GOLD_ORE || b == Blocks.DEEPSLATE_GOLD_ORE
-                || b == Blocks.IRON_ORE || b == Blocks.DEEPSLATE_IRON_ORE
-                || b == Blocks.LAPIS_ORE || b == Blocks.DEEPSLATE_LAPIS_ORE
-                || b == Blocks.REDSTONE_ORE || b == Blocks.DEEPSLATE_REDSTONE_ORE
-                || b == Blocks.COAL_ORE || b == Blocks.DEEPSLATE_COAL_ORE;
-    }
+        if (scanCursor == 0) {
+            nearest.clear();
+            scanOrigin = player.getBlockPos().toImmutable();
 
-    private void spawnParticles(MinecraftClient mc) {
-        if (mc.world == null || mc.player == null) return;
+            Set<String> selectedIds = blocks.getSelectedIds();
+            Set<Block> selectedBlocks = new HashSet<>();
+            for (BlockCatalog.Option option : BlockCatalog.OPTIONS) {
+                if (selectedIds.contains(option.id())) selectedBlocks.add(option.block());
+            }
+            scanSelectedBlocks = selectedBlocks;
+            scanRows = buildScanRows(radius);
+            scanRowCursor = 0;
+            scanXCursor = 0;
 
-        // Yarn 1.21.11: DustParticleEffect(int colorRgb, float scale)
-        int rgb = color.get() & 0x00FFFFFF;
-        DustParticleEffect dust = new DustParticleEffect(rgb, 1.0f);
-
-        double eyesX = mc.player.getX();
-        double eyesY = mc.player.getEyeY();
-        double eyesZ = mc.player.getZ();
-
-        int limit = Math.min(found.size(), 40);
-        for (int i = 0; i < limit; i++) {
-            BlockPos pos = found.get(i);
-            double cx = pos.getX() + 0.5;
-            double cy = pos.getY() + 0.5;
-            double cz = pos.getZ() + 0.5;
-            mc.world.addParticleClient(dust, cx, cy, cz, 0, 0, 0);
-
-            if (tracers.get()) {
-                for (int t = 1; t <= 4; t++) {
-                    double f = t / 5.0;
-                    mc.world.addParticleClient(dust,
-                            eyesX + (cx - eyesX) * f,
-                            eyesY + (cy - eyesY) * f,
-                            eyesZ + (cz - eyesZ) * f,
-                            0, 0, 0);
-                }
+            if (scanSelectedBlocks.isEmpty()) {
+                found.clear();
+                scanCursor = 0;
+                scanOrigin = null;
+                scanRows = List.of();
+                scanDelay = RESCAN_DELAY_TICKS;
+                return;
             }
         }
+
+        int processed = 0;
+        while (scanRowCursor < scanRows.size() && processed < SCAN_BUDGET_PER_TICK) {
+            ScanRow row = scanRows.get(scanRowCursor);
+            int x = scanXCursor - row.maxX();
+            scanMutable.set(scanOrigin.getX() + x,
+                    scanOrigin.getY() + row.y(),
+                    scanOrigin.getZ() + row.z());
+            Block block = mc.world.getBlockState(scanMutable).getBlock();
+            if (scanSelectedBlocks.contains(block)) {
+                double distanceSquared = squaredDistance(scanMutable, scanOrigin);
+                if (nearest.size() < MAX_STORED_BLOCKS) {
+                    nearest.add(new ScanHit(scanMutable.toImmutable(), distanceSquared));
+                } else if (distanceSquared < nearest.peek().distanceSquared()) {
+                    nearest.poll();
+                    nearest.add(new ScanHit(scanMutable.toImmutable(), distanceSquared));
+                }
+            }
+
+            scanCursor++;
+            processed++;
+            scanXCursor++;
+            if (scanXCursor >= row.length()) {
+                scanRowCursor++;
+                scanXCursor = 0;
+            }
+        }
+
+        if (scanRowCursor >= scanRows.size()) {
+            found.clear();
+            for (ScanHit hit : nearest) found.add(hit.pos());
+            BlockPos currentPlayerPos = player.getBlockPos();
+            found.sort(Comparator.comparingDouble(pos -> squaredDistance(pos, currentPlayerPos)));
+            scanCursor = 0;
+            scanOrigin = null;
+            scanRows = List.of();
+            scanRowCursor = 0;
+            scanXCursor = 0;
+            scanDelay = RESCAN_DELAY_TICKS;
+        }
     }
+
+    private static List<ScanRow> buildScanRows(int radius) {
+        List<ScanRow> rows = new ArrayList<>();
+        int radiusSquared = radius * radius;
+        for (int y = -radius; y <= radius; y++) {
+            int ySquared = y * y;
+            for (int z = -radius; z <= radius; z++) {
+                int maxXSquared = radiusSquared - ySquared - z * z;
+                if (maxXSquared < 0) continue;
+                int maxX = (int) Math.floor(Math.sqrt(maxXSquared));
+                rows.add(new ScanRow(y, z, maxX));
+            }
+        }
+        return List.copyOf(rows);
+    }
+
+    private static double squaredDistance(BlockPos a, BlockPos b) {
+        double dx = a.getX() - b.getX();
+        double dy = a.getY() - b.getY();
+        double dz = a.getZ() - b.getZ();
+        return dx * dx + dy * dy + dz * dz;
+    }
+
+    private record ScanRow(int y, int z, int maxX) {
+        int length() { return maxX * 2 + 1; }
+    }
+
+    private record ScanHit(BlockPos pos, double distanceSquared) {}
+
+    public List<BlockPos> getFoundBlocks() { return found; }
+    public int getEspColor() { return color.get(); }
+    public boolean shouldDrawTracers() { return tracers.get(); }
 
     public void renderHud(DrawContext ctx, float tickDelta) {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc.textRenderer == null) return;
-        ctx.drawText(mc.textRenderer, "BlockESP: " + found.size() + " (" + preset.get() + ")",
+        ctx.drawText(mc.textRenderer,
+                "BlockESP: " + found.size() + " found / " + blocks.getSelectedIds().size() + " selected",
                 4, 40, color.get(), true);
     }
 }

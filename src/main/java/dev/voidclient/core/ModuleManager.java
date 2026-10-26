@@ -1,5 +1,6 @@
 package dev.voidclient.core;
 
+import dev.voidclient.VoidClient;
 import dev.voidclient.core.event.EventBus;
 import dev.voidclient.core.event.events.KeyEvent;
 import dev.voidclient.core.event.events.Render2DEvent;
@@ -23,49 +24,37 @@ import dev.voidclient.modules.render.Freelook;
 import dev.voidclient.modules.render.Fullbright;
 import dev.voidclient.modules.render.Particles;
 import dev.voidclient.modules.render.PlayerESP;
-import dev.voidclient.modules.utility.Welcome;
-
+import dev.voidclient.modules.render.Tracers;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
-/**
- * Holds and manages all modules.
- */
 public class ModuleManager {
-
+    private static final long FAILURE_LOG_INTERVAL_NS = 10_000_000_000L;
     private final List<Module> modules = new ArrayList<>();
+    private final Map<Module, Long> lastFailureLogged = new IdentityHashMap<>();
 
     public ModuleManager(EventBus eventBus) {
-        // GUI
         register(new ClickGuiModule());
-
-        // Combat
         register(new AutoTotem());
         register(new SlowHit());
-
-        // Movement
         register(new Fly());
         register(new Jesus());
         register(new FlyBoat());
         register(new Speed());
         register(new NoFall());
         register(new ToggleSprint());
-
-        // Render
         register(new Freecam());
         register(new Freelook());
         register(new BlockESP());
         register(new PlayerESP());
+        register(new Tracers());
         register(new Particles());
         register(new BreakWaves());
         register(new Fullbright());
-
-        // Utility
-        register(new Welcome());
-
-        // HUD
         register(new FPS());
         register(new ArrayListHud());
         register(new Watermark());
@@ -75,41 +64,36 @@ public class ModuleManager {
         eventBus.subscribe(KeyEvent.class, this::onKey);
     }
 
-    private void register(Module module) {
-        modules.add(module);
-    }
-
-    public List<Module> getModules() {
-        return modules;
-    }
+    private void register(Module module) { modules.add(module); }
+    public List<Module> getModules() { return modules; }
 
     public List<Module> getByCategory(Category category) {
-        return modules.stream()
-                .filter(m -> m.getCategory() == category)
-                .sorted(Comparator.comparing(Module::getName))
-                .collect(Collectors.toList());
+        return modules.stream().filter(m -> m.getCategory() == category)
+                .sorted(Comparator.comparing(Module::getName)).collect(Collectors.toList());
     }
 
     public Module getByName(String name) {
-        return modules.stream()
-                .filter(m -> m.getName().equalsIgnoreCase(name))
-                .findFirst()
-                .orElse(null);
+        return modules.stream().filter(m -> m.getName().equalsIgnoreCase(name)).findFirst().orElse(null);
     }
 
     public List<Module> getEnabled() {
         return modules.stream().filter(Module::isEnabled).collect(Collectors.toList());
     }
 
+    private void logFailure(Module module, Exception error) {
+        long now = System.nanoTime();
+        Long previous = lastFailureLogged.get(module);
+        if (previous != null && now - previous < FAILURE_LOG_INTERVAL_NS) return;
+        lastFailureLogged.put(module, now);
+        VoidClient.LOGGER.error("Module {} failed; repeated errors are throttled for 10 seconds.",
+                module.getName(), error);
+    }
+
     private void onTick(TickEvent event) {
         for (Module module : modules) {
-            if (module.isEnabled()) {
-                try {
-                    module.onTick();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
+            if (!module.isEnabled()) continue;
+            try { module.onTick(); }
+            catch (Exception error) { logFailure(module, error); }
         }
     }
 
@@ -117,32 +101,20 @@ public class ModuleManager {
         for (Module module : modules) {
             if (!module.isEnabled()) continue;
             try {
-                if (module instanceof FPS fps) {
-                    fps.render(event.getContext(), event.getTickDelta());
-                } else if (module instanceof ArrayListHud array) {
-                    array.render(event.getContext(), event.getTickDelta());
-                } else if (module instanceof Watermark wm) {
-                    wm.render(event.getContext(), event.getTickDelta());
-                } else if (module instanceof BlockESP blockEsp) {
-                    blockEsp.renderHud(event.getContext(), event.getTickDelta());
-                } else if (module instanceof PlayerESP playerEsp) {
-                    playerEsp.renderHud(event.getContext(), event.getTickDelta());
-                } else {
-                    module.onRender2D(event.getTickDelta());
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+                if (module instanceof FPS fps) fps.render(event.getContext(), event.getTickDelta());
+                else if (module instanceof ArrayListHud array) array.render(event.getContext(), event.getTickDelta());
+                else if (module instanceof Watermark watermark) watermark.render(event.getContext(), event.getTickDelta());
+                else if (module instanceof BlockESP blockEsp) blockEsp.renderHud(event.getContext(), event.getTickDelta());
+                else if (module instanceof PlayerESP playerEsp) playerEsp.renderHud(event.getContext(), event.getTickDelta());
+                else module.onRender2D(event.getTickDelta());
+            } catch (Exception error) { logFailure(module, error); }
         }
     }
 
     private void onKey(KeyEvent event) {
         if (!event.isPress()) return;
-
         for (Module module : modules) {
-            if (module.getKeybind() != -1 && module.getKeybind() == event.getKey()) {
-                module.toggle();
-            }
+            if (module.getKeybind() != -1 && module.getKeybind() == event.getKey()) module.toggle();
         }
     }
 }
