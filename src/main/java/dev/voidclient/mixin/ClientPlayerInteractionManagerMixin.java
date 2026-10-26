@@ -7,7 +7,6 @@ import net.minecraft.util.math.Direction;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /** Tracks all local mining paths; survival block-state confirmation is handled by ClientWorldMixin. */
@@ -41,9 +40,4 @@ public abstract class ClientPlayerInteractionManagerMixin {
         BreakWaves.trackBlockBreakTarget(pos);
     }
 
-    @Inject(method = "cancelBlockBreaking()V", at = @At("HEAD"))
-    private void voidclient$noteBlockBreakingCancelled(CallbackInfo ci) {
-        // Keep the short-lived target until the server's block-state confirmation arrives.
-        // BreakWaves expires it automatically if no matching update arrives.
-    }
 }
