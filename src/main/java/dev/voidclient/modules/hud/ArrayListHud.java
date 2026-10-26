@@ -5,6 +5,7 @@ import dev.voidclient.core.Category;
 import dev.voidclient.core.Module;
 import dev.voidclient.core.setting.ColorSetting;
 import dev.voidclient.core.setting.NumberSetting;
+import dev.voidclient.modules.personalization.HudTheme;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -45,7 +46,7 @@ public class ArrayListHud extends Module {
         }
         int drawY = y.getInt();
         int drawX = x.getInt();
-        int textColor = color.get();
+        int textColor = HudTheme.resolve(color.get());
         for (Module module : cachedEnabled) {
             ctx.text(mc.font, module.getName(), drawX, drawY, textColor, true);
             drawY += 10;
