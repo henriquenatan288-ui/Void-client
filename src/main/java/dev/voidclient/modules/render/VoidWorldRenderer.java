@@ -43,7 +43,8 @@ public final class VoidWorldRenderer {
             for (AbstractClientPlayerEntity target : tracers.getTargets()) {
                 int color = tracers.getTracerColor(target);
                 Vec3d interpolatedPos = target.getLerpedPos(tickProgress);
-                drawLine(vertices, 0, 0, 0,
+                Vec3d tracerStart = mc.player.getRotationVec(tickProgress).multiply(0.65);
+                drawLine(vertices, tracerStart.x, tracerStart.y, tracerStart.z,
                         interpolatedPos.x - cameraPos.x,
                         interpolatedPos.y + target.getHeight() * 0.55 - cameraPos.y,
                         interpolatedPos.z - cameraPos.z, color);
@@ -62,7 +63,8 @@ public final class VoidWorldRenderer {
                         pos.getX() + 0.975, pos.getY() + 0.975, pos.getZ() + 0.975,
                         cameraPos, color);
                 if (blockEsp.shouldDrawTracers()) {
-                    drawLine(vertices, 0, 0, 0,
+                    Vec3d tracerStart = mc.player.getRotationVec(tickProgress).multiply(0.65);
+                    drawLine(vertices, tracerStart.x, tracerStart.y, tracerStart.z,
                             pos.getX() + 0.5 - cameraPos.x,
                             pos.getY() + 0.5 - cameraPos.y,
                             pos.getZ() + 0.5 - cameraPos.z, color);
@@ -101,15 +103,24 @@ public final class VoidWorldRenderer {
         int green = (argb >> 8) & 0xFF;
         int blue = argb & 0xFF;
         int alpha = (argb >>> 24) & 0xFF;
-        vertex(vertices, x1, y1, z1, red, green, blue, alpha);
-        vertex(vertices, x2, y2, z2, red, green, blue, alpha);
+        double dx = x2 - x1;
+        double dy = y2 - y1;
+        double dz = z2 - z1;
+        double length = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        if (length < 1.0e-6) return;
+        float nx = (float) (dx / length);
+        float ny = (float) (dy / length);
+        float nz = (float) (dz / length);
+        vertex(vertices, x1, y1, z1, red, green, blue, alpha, nx, ny, nz);
+        vertex(vertices, x2, y2, z2, red, green, blue, alpha, nx, ny, nz);
     }
 
     private static void vertex(VertexConsumer v, double x, double y, double z,
-                               int red, int green, int blue, int alpha) {
+                               int red, int green, int blue, int alpha,
+                               float nx, float ny, float nz) {
         v.vertex((float)x, (float)y, (float)z)
                 .color(red, green, blue, alpha)
-                .normal(0.0F, 1.0F, 0.0F)
-                .lineWidth(2.0F);
+                .normal(nx, ny, nz)
+                .lineWidth(1.5F);
     }
 }
