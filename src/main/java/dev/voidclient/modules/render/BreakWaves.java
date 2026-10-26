@@ -6,52 +6,81 @@ import dev.voidclient.core.Module;
 import dev.voidclient.core.setting.ColorSetting;
 import dev.voidclient.core.setting.NumberSetting;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.particles.DustParticleOptions;
+import net.minecraft.core.Direction;
 
-/** Expanding rings triggered when the locally tracked block changes to air. */
+/**
+ * Hologram rings (through walls) when the player breaks a block downward.
+ * Drawn by VoidWorldRenderer using the no-depth line pipeline.
+ */
 public class BreakWaves extends Module {
     private final NumberSetting waves = addSetting(
             new NumberSetting("Waves", "Number of expanding rings", 3, 1, 6, 1));
+    private final NumberSetting maxAge = addSetting(
+            new NumberSetting("Duration", "How long each wave lives (ticks)", 18, 8, 40, 1));
     private final ColorSetting color = addSetting(
-            new ColorSetting("Color", "Wave color", 0xFFFFFFFF));
+            new ColorSetting("Color", "Hologram color", 0xAA00FFCC));
 
     private final List<Wave> active = new ArrayList<>();
     private static BlockPos trackedTarget;
     private static ClientLevel trackedWorld;
     private static long targetTrackedAt = Long.MIN_VALUE;
+    private static boolean trackedDownward;
 
     public BreakWaves() {
-        super("BreakWaves", "Show expanding rings when you break a block.", Category.RENDER);
+        super("BreakWaves", "Hologram rings when you break a block downward.", Category.RENDER);
     }
 
-    /** Called by interaction-manager hooks while the local player is mining a block. */
+    /** Called while mining. Only keep targets broken roughly downward. */
     public static void trackBlockBreakTarget(BlockPos pos) {
         if (pos == null || VoidClient.MODULE_MANAGER == null) return;
         Module module = VoidClient.MODULE_MANAGER.getByName("BreakWaves");
         if (!(module instanceof BreakWaves breakWaves) || !breakWaves.isEnabled()) return;
 
         Minecraft mc = Minecraft.getInstance();
-        if (mc.level == null) return;
+        if (mc.level == null || mc.player == null) return;
+
+        // Downward = block is at or below the player's feet / looking down
+        boolean downward = pos.getY() <= mc.player.blockPosition().getY()
+                || mc.player.getXRot() > 25.0f;
+
         BlockPos immutablePos = pos.immutable();
-        if (!immutablePos.equals(trackedTarget) || trackedWorld != mc.level) {
-            VoidClient.LOGGER.info("BreakWaves tracking mining target {}", immutablePos);
-        }
         trackedTarget = immutablePos;
         trackedWorld = mc.level;
         targetTrackedAt = mc.level.getGameTime();
+        trackedDownward = downward;
     }
 
-    /**
-     * Called before ClientWorld applies a block-state update. This catches survival mining
-     * too, where the server confirms the break asynchronously rather than in breakBlock().
-     */
+    /** Also called from the interaction mixin with face direction when available. */
+    public static void trackBlockBreakTarget(BlockPos pos, Direction face) {
+        if (pos == null || VoidClient.MODULE_MANAGER == null) return;
+        Module module = VoidClient.MODULE_MANAGER.getByName("BreakWaves");
+        if (!(module instanceof BreakWaves breakWaves) || !breakWaves.isEnabled()) return;
+
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null || mc.player == null) return;
+
+        boolean downward = face == Direction.DOWN
+                || pos.getY() <= mc.player.blockPosition().getY()
+                || mc.player.getXRot() > 25.0f;
+
+        trackedTarget = pos.immutable();
+        trackedWorld = mc.level;
+        targetTrackedAt = mc.level.getGameTime();
+        trackedDownward = downward;
+    }
+
     public static void onClientBlockRemoved(BlockPos pos) {
         if (pos == null || trackedTarget == null || !trackedTarget.equals(pos)) return;
+        if (!trackedDownward) {
+            clearTrackedTarget();
+            return;
+        }
 
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null || mc.level != trackedWorld) {
@@ -60,7 +89,6 @@ public class BreakWaves extends Module {
         }
 
         long age = mc.level.getGameTime() - targetTrackedAt;
-        VoidClient.LOGGER.info("BreakWaves saw air update at tracked block {}, age={} ticks", pos, age);
         if (age < 0 || age > 40) {
             clearTrackedTarget();
             return;
@@ -78,19 +106,19 @@ public class BreakWaves extends Module {
         trackedTarget = null;
         trackedWorld = null;
         targetTrackedAt = Long.MIN_VALUE;
+        trackedDownward = false;
     }
 
     private void spawn(BlockPos pos) {
-        if (active.size() >= 4) active.remove(0);
+        if (active.size() >= 6) active.remove(0);
         active.add(new Wave(pos.getX() + 0.5, pos.getY() + 0.05, pos.getZ() + 0.5));
-        VoidClient.LOGGER.info("BreakWaves: created wave at {}", pos);
+        VoidClient.LOGGER.info("BreakWaves hologram at {}", pos);
     }
 
     @Override
     protected void onEnable() {
         active.clear();
         clearTrackedTarget();
-        VoidClient.LOGGER.info("BreakWaves enabled");
     }
 
     @Override
@@ -112,36 +140,37 @@ public class BreakWaves extends Module {
                 || mc.level.getGameTime() - targetTrackedAt > 40)) {
             clearTrackedTarget();
         }
-        if (active.isEmpty()) return;
 
-        DustParticleOptions dust = new DustParticleOptions(color.getRgb(), 0.9f);
-        int maxWaves = waves.getInt();
-        Iterator<Wave> iterator = active.iterator();
-        while (iterator.hasNext()) {
-            Wave wave = iterator.next();
+        int life = maxAge.getInt();
+        Iterator<Wave> it = active.iterator();
+        while (it.hasNext()) {
+            Wave wave = it.next();
             wave.age++;
-
-            for (int ring = 0; ring < maxWaves; ring++) {
-                int age = wave.age - ring * 3;
-                if (age < 0 || age > 12) continue;
-                double radius = age * 0.32;
-                int points = 14;
-                for (int i = 0; i < points; i++) {
-                    double angle = Math.PI * 2.0 * i / points;
-                    mc.level.addParticle(dust, true, true,
-                            wave.x + Math.cos(angle) * radius,
-                            wave.y + 0.03,
-                            wave.z + Math.sin(angle) * radius,
-                            0, 0.005, 0);
-                }
-            }
-            if (wave.age > 12 + maxWaves * 3) iterator.remove();
+            if (wave.age > life) it.remove();
         }
     }
 
-    private static final class Wave {
-        final double x, y, z;
-        int age;
+    /** Snapshot for the 3D renderer (hologram rings). */
+    public List<Wave> getActiveWaves() {
+        return Collections.unmodifiableList(active);
+    }
+
+    public int getWaveColor() {
+        return color.get();
+    }
+
+    public int getWaveCount() {
+        return waves.getInt();
+    }
+
+    public int getMaxAge() {
+        return maxAge.getInt();
+    }
+
+    public static final class Wave {
+        public final double x, y, z;
+        public int age;
+
         Wave(double x, double y, double z) {
             this.x = x;
             this.y = y;
