@@ -51,7 +51,7 @@ public class BreakWaves extends Module {
      * Called before ClientWorld applies a block-state update. This catches survival mining
      * too, where the server confirms the break asynchronously rather than in breakBlock().
      */
-    public static void onClientBlockChangedToAir(BlockPos pos) {
+    public static void onClientBlockRemoved(BlockPos pos) {
         if (pos == null || trackedTarget == null || !trackedTarget.equals(pos)) return;
 
         MinecraftClient mc = MinecraftClient.getInstance();
@@ -83,7 +83,7 @@ public class BreakWaves extends Module {
 
     private void spawn(BlockPos pos) {
         if (active.size() >= 4) active.remove(0);
-        active.add(new Wave(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5));
+        active.add(new Wave(pos.getX() + 0.5, pos.getY() + 0.05, pos.getZ() + 0.5));
         VoidClient.LOGGER.debug("BreakWaves: created wave at {}", pos);
     }
 
