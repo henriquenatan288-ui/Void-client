@@ -6,7 +6,6 @@ import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
 import net.minecraft.client.render.Camera;
-import net.minecraft.client.render.RenderLayers;
 import net.minecraft.client.render.VertexConsumer;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Box;
@@ -22,7 +21,7 @@ public final class VoidWorldRenderer {
         if (mc.player == null || mc.world == null || mc.gameRenderer == null) return;
         Camera camera = mc.gameRenderer.getCamera();
         Vec3d cameraPos = camera.getCameraPos();
-        VertexConsumer vertices = context.consumers().getBuffer(RenderLayers.lines());
+        VertexConsumer vertices = context.consumers().getBuffer(VoidRenderLayers.ESP_LINES);
 
         Module playerEspModule = VoidClient.MODULE_MANAGER == null ? null
                 : VoidClient.MODULE_MANAGER.getByName("PlayerESP");
@@ -104,6 +103,7 @@ public final class VoidWorldRenderer {
                                int red, int green, int blue, int alpha) {
         v.vertex((float)x, (float)y, (float)z)
                 .color(red, green, blue, alpha)
-                .normal(0.0F, 1.0F, 0.0F);
+                .normal(0.0F, 1.0F, 0.0F)
+                .lineWidth(2.0F);
     }
 }
