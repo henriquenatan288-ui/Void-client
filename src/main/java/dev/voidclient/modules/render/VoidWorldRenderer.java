@@ -11,7 +11,7 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
 
-/** Draws persistent 3D boxes and camera-origin tracers in Fabric's world render pass. */
+/** Draws persistent 3D boxes and camera-forward tracers in Fabric's world render pass. */
 public final class VoidWorldRenderer {
     private static final int MAX_BLOCK_BOXES = 160;
     private VoidWorldRenderer() {}
@@ -43,7 +43,7 @@ public final class VoidWorldRenderer {
             for (AbstractClientPlayerEntity target : tracers.getTargets()) {
                 int color = tracers.getTracerColor(target);
                 Vec3d interpolatedPos = target.getLerpedPos(tickProgress);
-                Vec3d tracerStart = mc.player.getRotationVec(tickProgress).multiply(0.65);
+                Vec3d tracerStart = cameraForwardOffset(camera, 0.65);
                 drawLine(vertices, tracerStart.x, tracerStart.y, tracerStart.z,
                         interpolatedPos.x - cameraPos.x,
                         interpolatedPos.y + target.getHeight() * 0.55 - cameraPos.y,
@@ -63,7 +63,7 @@ public final class VoidWorldRenderer {
                         pos.getX() + 0.975, pos.getY() + 0.975, pos.getZ() + 0.975,
                         cameraPos, color);
                 if (blockEsp.shouldDrawTracers()) {
-                    Vec3d tracerStart = mc.player.getRotationVec(tickProgress).multiply(0.65);
+                    Vec3d tracerStart = cameraForwardOffset(camera, 0.65);
                     drawLine(vertices, tracerStart.x, tracerStart.y, tracerStart.z,
                             pos.getX() + 0.5 - cameraPos.x,
                             pos.getY() + 0.5 - cameraPos.y,
@@ -71,6 +71,17 @@ public final class VoidWorldRenderer {
                 }
             }
         }
+    }
+
+    private static Vec3d cameraForwardOffset(Camera camera, double distance) {
+        double yaw = Math.toRadians(camera.getYaw());
+        double pitch = Math.toRadians(camera.getPitch());
+        double cosPitch = Math.cos(pitch);
+        return new Vec3d(
+                -Math.sin(yaw) * cosPitch,
+                -Math.sin(pitch),
+                Math.cos(yaw) * cosPitch
+        ).multiply(distance);
     }
 
     private static void drawBox(VertexConsumer v, Box b, Vec3d camera, int color) {
