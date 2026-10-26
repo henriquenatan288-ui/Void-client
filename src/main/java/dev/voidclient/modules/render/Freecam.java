@@ -54,7 +54,7 @@ public class Freecam extends Module {
         player.setNoGravity(true);
         CameraControl.startFreecam(player);
         mc.options.setPerspective(Perspective.THIRD_PERSON_BACK);
-        VoidClient.LOGGER.debug("Freecam enabled; player onGround={}, noGravity={}",
+        VoidClient.LOGGER.info("Freecam enabled; player onGround={}, noGravity={}",
                 previousOnGround, previousNoGravity);
     }
 
@@ -84,7 +84,7 @@ public class Freecam extends Module {
         previousVelocity = Vec3d.ZERO;
         if (previousPerspective != null) mc.options.setPerspective(previousPerspective);
         previousPerspective = null;
-        VoidClient.LOGGER.debug("Freecam disabled; player state restored");
+        VoidClient.LOGGER.info("Freecam disabled; player state restored");
     }
 
     @Override
