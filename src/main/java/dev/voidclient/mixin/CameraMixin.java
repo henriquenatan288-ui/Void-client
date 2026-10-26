@@ -4,6 +4,7 @@ import dev.voidclient.modules.render.CameraControl;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.render.Camera;
+import dev.voidclient.mixin.CameraInvoker;
 import net.minecraft.entity.Entity;
 import net.minecraft.world.World;
 import net.minecraft.util.math.Vec3d;
@@ -38,7 +39,7 @@ public abstract class CameraMixin {
         if (!CameraControl.isFreecamActive()) return;
         Vec3d pos = CameraControl.interpolatedPosition(tickProgress);
         Camera camera = (Camera) (Object) this;
-        camera.setPos(pos);
-        camera.setRotation(CameraControl.getYaw(), CameraControl.getPitch());
+        ((CameraInvoker) camera).voidclient$setPos(pos);
+        ((CameraInvoker) camera).voidclient$setRotation(CameraControl.getYaw(), CameraControl.getPitch());
     }
 }
