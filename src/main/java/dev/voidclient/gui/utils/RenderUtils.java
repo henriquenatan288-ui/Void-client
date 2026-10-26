@@ -61,7 +61,7 @@ public final class RenderUtils {
     }
 
     public static void drawText(GuiGraphicsExtractor ctx, Font tr, String text, int x, int y, int color, boolean shadow) {
-        ctx.drawString(tr, text, x, y, color, shadow);
+        ctx.text(tr, text, x, y, color, shadow);
     }
 
     public static int textWidth(Font tr, String text) {

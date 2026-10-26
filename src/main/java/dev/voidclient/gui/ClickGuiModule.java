@@ -19,7 +19,7 @@ public class ClickGuiModule extends Module {
     @Override
     protected void onEnable() {
         Minecraft mc = Minecraft.getInstance();
-        if (mc != null && !(mc.gui.getScreen() instanceof ClickGuiScreen)) {
+        if (mc != null && !(mc.gui.screen() instanceof ClickGuiScreen)) {
             mc.gui.setScreen(new ClickGuiScreen());
         }
         setEnabled(false);

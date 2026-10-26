@@ -22,7 +22,7 @@ public class KeyboardMixin {
     )
     private void voidclient$onKey(long window, int action, KeyEvent input, CallbackInfo ci) {
         Minecraft mc = Minecraft.getInstance();
-        if (mc == null || mc.gui.getScreen() != null) return;
+        if (mc == null || mc.gui.screen() != null) return;
         if (input == null) return;
 
         // Skip Right Shift — handled by official KeyBinding

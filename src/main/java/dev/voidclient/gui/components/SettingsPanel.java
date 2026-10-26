@@ -179,7 +179,7 @@ public class SettingsPanel {
             } else if (setting instanceof BlockListSetting blockListSetting) {
                 if (RenderUtils.hovered((int) mouseX, (int) mouseY, x, cy - 2, WIDTH, 22)) {
                     Minecraft mc = Minecraft.getInstance();
-                    if (mc != null) mc.gui.setScreen(new BlockSelectionScreen(mc.gui.getScreen(), blockListSetting));
+                    if (mc != null) mc.gui.setScreen(new BlockSelectionScreen(mc.gui.screen(), blockListSetting));
                     return true;
                 }
                 cy += rowHeight(setting);

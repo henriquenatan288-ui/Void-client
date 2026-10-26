@@ -12,8 +12,9 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
-import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
+import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
 import net.minecraft.client.KeyMapping;
+import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -48,7 +49,7 @@ public class VoidClient implements ClientModInitializer {
 
         KeyMapping.Category category = KeyMapping.Category.register(Identifier.fromNamespaceAndPath(MOD_ID, "main"));
         OPEN_GUI_KEY = KeyMappingHelper.registerKeyMapping(new KeyMapping(
-                "key.voidclient.clickgui", GLFW.GLFW_KEY_RIGHT_SHIFT, category));
+                "key.voidclient.clickgui", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_RIGHT_SHIFT, category));
 
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> welcomePending = true);
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> welcomePending = false);
@@ -58,8 +59,8 @@ public class VoidClient implements ClientModInitializer {
 
             if (welcomePending && client.player != null && client.level != null) {
                 String nick = client.player.getName().getString();
-                client.gui.getChat().addMessage(
-                        Component.literal("§7[§fVoid§7] §fWelcome to Void §b" + nick), false);
+                client.player.sendSystemMessage(
+                        Component.literal("§7[§fVoid§7] §fWelcome to Void §b" + nick));
                 welcomePending = false;
             }
 
@@ -68,7 +69,7 @@ public class VoidClient implements ClientModInitializer {
             }
         });
 
-        WorldRenderEvents.AFTER_ENTITIES.register(VoidWorldRenderer::render);
+        LevelRenderEvents.AFTER_SOLID_FEATURES.register(VoidWorldRenderer::render);
 
         HudElementRegistry.addLast(Identifier.fromNamespaceAndPath(MOD_ID, "hud"), (drawContext, tickCounter) -> {
             float tickDelta = tickCounter.getGameTimeDeltaPartialTick(false);
@@ -81,11 +82,11 @@ public class VoidClient implements ClientModInitializer {
 
     private static void toggleClickGui(Minecraft client) {
         if (client == null) return;
-        if (client.gui.getScreen() instanceof ClickGuiScreen) {
+        if (client.gui.screen() instanceof ClickGuiScreen) {
             client.screen.onClose();
             return;
         }
-        if (client.screen == null) {
+        if (client.gui.screen() == null) {
             client.gui.setScreen(new ClickGuiScreen());
             LOGGER.info("ClickGUI opened");
         }

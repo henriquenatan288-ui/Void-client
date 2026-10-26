@@ -1,7 +1,7 @@
 package dev.voidclient.modules.render;
 
 import com.mojang.blaze3d.pipeline.RenderPipeline;
-import com.mojang.blaze3d.platform.DepthTestFunction;
+import java.util.Optional;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.renderer.rendertype.RenderSetup;
 import net.minecraft.client.renderer.rendertype.RenderType;
@@ -12,14 +12,14 @@ public final class VoidRenderLayers {
     private static final RenderPipeline ESP_LINES_PIPELINE = RenderPipelines.register(
             RenderPipeline.builder(RenderPipelines.LINES_SNIPPET)
                     .withLocation(Identifier.fromNamespaceAndPath("voidclient", "pipeline/esp_lines"))
-                    .withDepthTestFunction(DepthTestFunction.NO_DEPTH_TEST)
+                    .withDepthStencilState(Optional.empty())
                     .withDepthWrite(false)
                     .build()
     );
 
     public static final RenderType ESP_LINES = RenderType.create(
             "voidclient_esp_lines",
-            RenderSetup.builder(ESP_LINES_PIPELINE).bufferSize(4096).createRenderSetup()
+            RenderSetup.builder(ESP_LINES_PIPELINE).createRenderSetup()
     );
 
     /** Load and register the pipeline early, before the first world render. */

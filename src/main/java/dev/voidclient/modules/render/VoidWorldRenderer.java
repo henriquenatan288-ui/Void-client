@@ -3,7 +3,7 @@ package dev.voidclient.modules.render;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import dev.voidclient.VoidClient;
 import dev.voidclient.core.Module;
-import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
+import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.AbstractClientPlayer;
@@ -16,14 +16,14 @@ public final class VoidWorldRenderer {
     private static final int MAX_BLOCK_BOXES = 160;
     private VoidWorldRenderer() {}
 
-    public static void render(WorldRenderContext context) {
+    public static void render(LevelRenderContext context) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.level == null || mc.gameRenderer == null) return;
-        Camera camera = mc.gameRenderer.getMainCamera();
+        Camera camera = mc.gameRenderer.getCamera();
         Vec3 cameraPos = camera.position();
         float tickProgress = mc.getDeltaTracker().getGameTimeDeltaPartialTick(false);
-        if (context.consumers() == null) return;
-        VertexConsumer vertices = context.consumers().getBuffer(VoidRenderLayers.ESP_LINES);
+        if (context.submitNodeCollector() == null) return;
+        VertexConsumer vertices = context.levelRenderer().renderBuffers().bufferSource().getBuffer(VoidRenderLayers.ESP_LINES);
 
         Module playerEspModule = VoidClient.MODULE_MANAGER == null ? null
                 : VoidClient.MODULE_MANAGER.getByName("PlayerESP");
