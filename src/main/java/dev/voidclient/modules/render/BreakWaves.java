@@ -38,7 +38,11 @@ public class BreakWaves extends Module {
 
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc.world == null) return;
-        trackedTarget = pos.toImmutable();
+        BlockPos immutablePos = pos.toImmutable();
+        if (!immutablePos.equals(trackedTarget) || trackedWorld != mc.world) {
+            VoidClient.LOGGER.debug("BreakWaves tracking mining target {}", immutablePos);
+        }
+        trackedTarget = immutablePos;
         trackedWorld = mc.world;
         targetTrackedAt = mc.world.getTime();
     }
@@ -57,6 +61,7 @@ public class BreakWaves extends Module {
         }
 
         long age = mc.world.getTime() - targetTrackedAt;
+        VoidClient.LOGGER.debug("BreakWaves saw air update at tracked block {}, age={} ticks", pos, age);
         if (age < 0 || age > 40) {
             clearTrackedTarget();
             return;
@@ -77,7 +82,7 @@ public class BreakWaves extends Module {
     }
 
     private void spawn(BlockPos pos) {
-        if (active.size() >= 12) active.remove(0);
+        if (active.size() >= 4) active.remove(0);
         active.add(new Wave(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5));
         VoidClient.LOGGER.debug("BreakWaves: created wave at {}", pos);
     }
@@ -121,7 +126,7 @@ public class BreakWaves extends Module {
                 int age = wave.age - ring * 3;
                 if (age < 0 || age > 12) continue;
                 double radius = age * 0.32;
-                int points = 18;
+                int points = 14;
                 for (int i = 0; i < points; i++) {
                     double angle = Math.PI * 2.0 * i / points;
                     mc.world.addParticleClient(dust, true, true,
