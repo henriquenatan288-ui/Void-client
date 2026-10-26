@@ -21,6 +21,7 @@ public final class VoidWorldRenderer {
         if (mc.player == null || mc.world == null || mc.gameRenderer == null) return;
         Camera camera = mc.gameRenderer.getCamera();
         Vec3d cameraPos = camera.getCameraPos();
+        float tickProgress = context.tickCounter().getTickProgress(false);
         VertexConsumer vertices = context.consumers().getBuffer(VoidRenderLayers.ESP_LINES);
 
         Module playerEspModule = VoidClient.MODULE_MANAGER == null ? null
@@ -28,7 +29,10 @@ public final class VoidWorldRenderer {
         if (playerEspModule instanceof PlayerESP playerEsp && playerEsp.isEnabled()) {
             int color = playerEsp.getEspColor();
             for (AbstractClientPlayerEntity target : playerEsp.getTargets()) {
-                drawBox(vertices, target.getBoundingBox(), cameraPos, color);
+                Vec3d interpolatedPos = target.getLerpedPos(tickProgress);
+                Box interpolatedBox = target.getBoundingBox()
+                        .offset(interpolatedPos.subtract(target.getPos()));
+                drawBox(vertices, interpolatedBox, cameraPos, color);
             }
         }
 
@@ -37,10 +41,11 @@ public final class VoidWorldRenderer {
         if (tracerModule instanceof Tracers tracers && tracers.isEnabled()) {
             int color = tracers.getTracerColor();
             for (AbstractClientPlayerEntity target : tracers.getTargets()) {
+                Vec3d interpolatedPos = target.getLerpedPos(tickProgress);
                 drawLine(vertices, 0, 0, 0,
-                        target.getX() - cameraPos.x,
-                        target.getBodyY(0.55) - cameraPos.y,
-                        target.getZ() - cameraPos.z, color);
+                        interpolatedPos.x - cameraPos.x,
+                        interpolatedPos.y + target.getHeight() * 0.55 - cameraPos.y,
+                        interpolatedPos.z - cameraPos.z, color);
             }
         }
 
