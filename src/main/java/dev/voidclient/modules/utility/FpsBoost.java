@@ -5,7 +5,7 @@ import dev.voidclient.core.Module;
 import dev.voidclient.core.setting.BooleanSetting;
 import dev.voidclient.core.setting.NumberSetting;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.ParticleStatus;
+import net.minecraft.server.level.ParticleStatus;
 
 /**
  * Client-side FPS helpers for mobile: cut particles, clouds, weather, entity distance.
