@@ -25,6 +25,7 @@ public final class VoidWorldRenderer {
         if (context.consumers() == null) return;
         VertexConsumer vertices = context.consumers().getBuffer(VoidRenderLayers.ESP_LINES);
 
+        // ---- PlayerESP ----
         Module playerEspModule = VoidClient.MODULE_MANAGER == null ? null
                 : VoidClient.MODULE_MANAGER.getByName("PlayerESP");
         if (playerEspModule instanceof PlayerESP playerEsp && playerEsp.isEnabled()) {
@@ -37,13 +38,15 @@ public final class VoidWorldRenderer {
             }
         }
 
+        // ---- Player Tracers (stick to crosshair) ----
         Module tracerModule = VoidClient.MODULE_MANAGER == null ? null
                 : VoidClient.MODULE_MANAGER.getByName("Tracers");
         if (tracerModule instanceof Tracers tracers && tracers.isEnabled()) {
             for (AbstractClientPlayerEntity target : tracers.getTargets()) {
                 int color = tracers.getTracerColor(target);
                 Vec3d interpolatedPos = target.getLerpedPos(tickProgress);
-                Vec3d tracerStart = cameraForwardOffset(camera, 0.65);
+                // Origin recomputed every frame from current camera look → stuck to mira
+                Vec3d tracerStart = cameraForwardOffset(camera, 0.45);
                 drawLine(vertices, tracerStart.x, tracerStart.y, tracerStart.z,
                         interpolatedPos.x - cameraPos.x,
                         interpolatedPos.y + target.getHeight() * 0.55 - cameraPos.y,
@@ -51,11 +54,13 @@ public final class VoidWorldRenderer {
             }
         }
 
+        // ---- BlockESP + tracers stuck to crosshair ----
         Module blockEspModule = VoidClient.MODULE_MANAGER == null ? null
                 : VoidClient.MODULE_MANAGER.getByName("BlockESP");
         if (blockEspModule instanceof BlockESP blockEsp && blockEsp.isEnabled()) {
             int color = blockEsp.getEspColor();
             int rendered = 0;
+            Vec3d tracerStart = cameraForwardOffset(camera, 0.45);
             for (BlockPos pos : blockEsp.getFoundBlocks()) {
                 if (rendered++ >= MAX_BLOCK_BOXES) break;
                 drawBox(vertices,
@@ -63,7 +68,6 @@ public final class VoidWorldRenderer {
                         pos.getX() + 0.975, pos.getY() + 0.975, pos.getZ() + 0.975,
                         cameraPos, color);
                 if (blockEsp.shouldDrawTracers()) {
-                    Vec3d tracerStart = cameraForwardOffset(camera, 0.65);
                     drawLine(vertices, tracerStart.x, tracerStart.y, tracerStart.z,
                             pos.getX() + 0.5 - cameraPos.x,
                             pos.getY() + 0.5 - cameraPos.y,
@@ -71,8 +75,37 @@ public final class VoidWorldRenderer {
                 }
             }
         }
+
+        // ---- SusChunkFinder markers ----
+        Module susModule = VoidClient.MODULE_MANAGER == null ? null
+                : VoidClient.MODULE_MANAGER.getByName("SusChunkFinder");
+        if (susModule instanceof SusChunkFinder sus && sus.isEnabled()) {
+            int color = sus.getMarkerColor();
+            for (SusChunkFinder.ScoredChunk sc : sus.getResults()) {
+                // Draw a vertical pillar at the center of the chunk
+                double cx = (sc.x() << 4) + 8.0;
+                double cz = (sc.z() << 4) + 8.0;
+                double y0 = mc.world.getBottomY();
+                double y1 = mc.world.getTopYInclusive();
+                // Only draw a short marker near the player height for visibility
+                double py = mc.player.getY();
+                drawBox(vertices,
+                        cx - 0.4, py - 2, cz - 0.4,
+                        cx + 0.4, py + 8, cz + 0.4,
+                        cameraPos, color);
+                // Thin vertical line through the whole height
+                drawLine(vertices,
+                        cx - cameraPos.x, y0 - cameraPos.y, cz - cameraPos.z,
+                        cx - cameraPos.x, y1 - cameraPos.y, cz - cameraPos.z, color);
+            }
+        }
     }
 
+    /**
+     * Pure look-direction offset from the camera origin.
+     * Using the live Camera rotation makes the tracer origin stick to the crosshair
+     * and ignore player body bobbing.
+     */
     private static Vec3d cameraForwardOffset(Camera camera, double distance) {
         double yaw = Math.toRadians(camera.getYaw());
         double pitch = Math.toRadians(camera.getPitch());
