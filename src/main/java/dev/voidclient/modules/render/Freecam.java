@@ -10,10 +10,10 @@ import net.minecraft.client.option.Perspective;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.util.math.Vec3d;
 
-/** Detached camera that preserves and restores the real client's player state. */
+/** Detached camera with velocity-based smooth movement. Body is frozen and restored cleanly. */
 public class Freecam extends Module {
     private final NumberSetting speed = addSetting(
-            new NumberSetting("Speed", "Free camera speed", 0.8, 0.2, 3.0, 0.1));
+            new NumberSetting("Speed", "Base freecam movement speed", 0.9, 0.2, 4.0, 0.05));
 
     private Perspective previousPerspective;
     private ClientPlayerEntity capturedPlayer;
@@ -27,7 +27,7 @@ public class Freecam extends Module {
     private boolean playerStateCaptured;
 
     public Freecam() {
-        super("Freecam", "Move a detached camera through blocks.", Category.RENDER);
+        super("Freecam", "Smooth detached camera with acceleration (best quality).", Category.RENDER);
     }
 
     @Override
@@ -54,8 +54,7 @@ public class Freecam extends Module {
         player.setNoGravity(true);
         CameraControl.startFreecam(player);
         mc.options.setPerspective(Perspective.THIRD_PERSON_BACK);
-        VoidClient.LOGGER.info("Freecam enabled; player onGround={}, noGravity={}",
-                previousOnGround, previousNoGravity);
+        VoidClient.LOGGER.info("Freecam enabled (smooth velocity mode)");
     }
 
     @Override
@@ -64,12 +63,10 @@ public class Freecam extends Module {
         MinecraftClient mc = MinecraftClient.getInstance();
 
         if (playerStateCaptured && capturedPlayer != null) {
-            // Restore the original entity even when disconnect/death has already replaced mc.player.
             capturedPlayer.setNoGravity(previousNoGravity);
             capturedPlayer.setOnGround(previousOnGround);
             capturedPlayer.setVelocity(previousVelocity);
 
-            // Only rewind position in the same world/session; never teleport a replacement player.
             if (mc.player == capturedPlayer && mc.world == capturedWorld) {
                 capturedPlayer.setPosition(previousPosition);
                 capturedPlayer.setYaw(previousYaw);
@@ -92,14 +89,13 @@ public class Freecam extends Module {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (!CameraControl.isFreecamActive()) return;
 
-        // Exit cleanly if death, disconnect, or a world change replaced the player/world.
         if (mc.player == null || mc.world == null
                 || mc.player != capturedPlayer || mc.world != capturedWorld) {
             setEnabled(false);
             return;
         }
 
-        // Freeze the real player; the detached camera receives movement separately.
+        // Freeze real player completely
         mc.player.setVelocity(Vec3d.ZERO);
         mc.player.setNoGravity(true);
 
@@ -109,6 +105,7 @@ public class Freecam extends Module {
                 - (mc.options.rightKey.isPressed() ? 1.0 : 0.0);
         double vertical = (mc.options.jumpKey.isPressed() ? 1.0 : 0.0)
                 - (mc.options.sneakKey.isPressed() ? 1.0 : 0.0);
+
         CameraControl.moveCamera(forward, strafe, vertical, speed.getFloat());
     }
 }
