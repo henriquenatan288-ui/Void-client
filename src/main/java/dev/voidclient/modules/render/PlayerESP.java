@@ -45,6 +45,9 @@ public class PlayerESP extends Module {
     @Override
     protected void onDisable() { targets = List.of(); }
 
+    @Override
+    public void onWorldUnload() { targets = List.of(); }
+
     public List<AbstractClientPlayer> getTargets() { return targets; }
     public int getEspColor() { return color.get(); }
 
