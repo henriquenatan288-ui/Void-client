@@ -11,21 +11,28 @@ import net.minecraft.particle.ParticleTypes;
 import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.util.hit.HitResult;
 
-/** Visual heavy-hit effect plus a slower local hand-swing animation. */
+/** Visual heavy-hit effect + slower local hand-swing + optional enchanted look on held item. */
 public class SlowHit extends Module {
     private final BooleanSetting critFx = addSetting(
             new BooleanSetting("Crit FX", "Extra crit particles on attack", true));
+    private final BooleanSetting enchantedLook = addSetting(
+            new BooleanSetting("Enchanted Look", "Force enchanted glint on the held tool", true));
     private final NumberSetting swingDuration = addSetting(
             new NumberSetting("Swing duration", "Ticks per visible arm swing", 14, 6, 30, 1));
 
     private boolean wasAttacking;
 
     public SlowHit() {
-        super("SlowHit", "Slow the visible attack/mining arm animation.", Category.COMBAT);
+        super("SlowHit", "Slow the visible attack/mining arm animation + enchanted visual.", Category.COMBAT);
     }
 
     public int getVisualSwingDuration() {
         return swingDuration.getInt();
+    }
+
+    /** Used by ItemStackFoilMixin. */
+    public boolean shouldForceFoil() {
+        return isEnabled() && enchantedLook.get();
     }
 
     @Override

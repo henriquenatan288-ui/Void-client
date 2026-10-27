@@ -15,7 +15,8 @@
     "InputAccessor",
     "InputMixin",
     "PlayerOutlineMixin",
-    "ClientWorldMixin"
+    "ClientWorldMixin",
+    "ItemStackFoilMixin"
   ],
   "injectors": {
     "defaultRequire": 1

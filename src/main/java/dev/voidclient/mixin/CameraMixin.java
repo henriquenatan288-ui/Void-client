@@ -10,6 +10,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(Camera.class)
 public abstract class CameraMixin {
@@ -36,5 +37,16 @@ public abstract class CameraMixin {
         CameraInvoker invoker = (CameraInvoker) (Object) this;
         invoker.voidclient$setPos(pos);
         invoker.voidclient$setRotation(CameraControl.getYaw(), CameraControl.getPitch());
+    }
+
+    /**
+     * When Freelook "Pass through blocks" is enabled, cancel the camera clip
+     * so the third-person camera can go through solid blocks.
+     */
+    @Inject(method = "clipToSpace(D)D", at = @At("HEAD"), cancellable = true)
+    private void voidclient$passThroughBlocks(double desiredCameraDistance, CallbackInfoReturnable<Double> cir) {
+        if (CameraControl.isPassThrough() || CameraControl.isFreecamActive()) {
+            cir.setReturnValue(desiredCameraDistance);
+        }
     }
 }

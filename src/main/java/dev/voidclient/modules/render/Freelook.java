@@ -2,11 +2,15 @@ package dev.voidclient.modules.render;
 
 import dev.voidclient.core.Category;
 import dev.voidclient.core.Module;
+import dev.voidclient.core.setting.BooleanSetting;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.option.Perspective;
 import net.minecraft.client.network.ClientPlayerEntity;
 
 public class Freelook extends Module {
+    private final BooleanSetting passThrough = addSetting(
+            new BooleanSetting("Pass through blocks", "Camera ignores block collision (no-clip)", true));
+
     private Perspective previous;
 
     public Freelook() {
@@ -19,7 +23,7 @@ public class Freelook extends Module {
         ClientPlayerEntity player = mc.player;
         if (player == null) return;
         previous = mc.options.getPerspective();
-        CameraControl.startFreelook(player);
+        CameraControl.startFreelook(player, passThrough.get());
         mc.options.setPerspective(Perspective.THIRD_PERSON_BACK);
     }
 
@@ -29,5 +33,13 @@ public class Freelook extends Module {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (previous != null) mc.options.setPerspective(previous);
         previous = null;
+    }
+
+    @Override
+    public void onTick() {
+        // Keep pass-through setting live while the module is on
+        if (isEnabled()) {
+            CameraControl.setPassThrough(passThrough.get());
+        }
     }
 }
