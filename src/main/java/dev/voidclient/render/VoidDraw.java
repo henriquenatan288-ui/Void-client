@@ -35,17 +35,13 @@ import org.joml.Vector4f;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * World drawing via filled quads (ribbons), not the LINES pipeline.
- * Extract phase collects shapes; draw phase submits after translucent terrain.
- */
 public final class VoidDraw {
     private VoidDraw() {}
 
     private static final Logger LOG = LoggerFactory.getLogger("VoidClient/Draw");
 
     public interface Extractor {
-        void extract(Sink sink, Minecraft mc);
+        void extract(Sink sink, Minecraft mc, float partialTick);
     }
 
     public interface Sink {
@@ -85,7 +81,7 @@ public final class VoidDraw {
         LevelExtractionEvents.END_EXTRACTION.register(VoidDraw::extractAll);
         LevelRenderEvents.AFTER_TRANSLUCENT_TERRAIN.register(VoidDraw::draw);
         ClientLifecycleEvents.CLIENT_STOPPING.register(c -> BUF.close());
-        LOG.info("VoidDraw initialized (ribbon/quad path)");
+        LOG.info("VoidDraw initialized (ribbon/quad path, 3-arg extractors)");
     }
 
     private static void extractAll(LevelExtractionContext ctx) {
@@ -95,6 +91,10 @@ public final class VoidDraw {
             frame = new Frame(List.of(), new Vec3(0, 0, 1));
             return;
         }
+        float pt = 0f;
+        try {
+            pt = mc.getDeltaTracker().getGameTimeDeltaPartialTick(false);
+        } catch (Throwable ignored) {}
 
         List<Shape> out = new ArrayList<>();
         Sink sink = new Sink() {
@@ -115,15 +115,15 @@ public final class VoidDraw {
         };
         for (Extractor e : EXTRACTORS) {
             try {
-                e.extract(sink, mc);
+                e.extract(sink, mc, pt);
             } catch (Throwable t) {
                 LOG.error("Extractor failed", t);
             }
         }
-        frame = new Frame(List.copyOf(out), cameraForward(mc));
+        frame = new Frame(List.copyOf(out), cameraForward(mc, pt));
     }
 
-    private static Vec3 cameraForward(Minecraft mc) {
+    private static Vec3 cameraForward(Minecraft mc, float pt) {
         float yaw;
         float pitch;
         if (FreecamController.isActive()) {
@@ -133,7 +133,6 @@ public final class VoidDraw {
             yaw = FreelookController.yaw();
             pitch = FreelookController.pitch();
         } else {
-            float pt = mc.getDeltaTracker().getGameTimeDeltaPartialTick(false);
             yaw = mc.player.getViewYRot(pt);
             pitch = mc.player.getViewXRot(pt);
         }
