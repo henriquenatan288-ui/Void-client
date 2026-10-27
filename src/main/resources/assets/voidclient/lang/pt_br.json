@@ -1,4 +1,6 @@
 {
+  "modmenu.nameTranslation.voidclient": "Void Client",
+  "modmenu.descriptionTranslation.voidclient": "Client utilitário para Minecraft 26.2 — feito por bisteck",
   "key.category.voidclient.main": "Void Client",
   "key.voidclient.clickgui": "Abrir ClickGUI"
 }
