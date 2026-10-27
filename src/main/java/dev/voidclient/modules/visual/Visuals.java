@@ -134,8 +134,9 @@ public final class Visuals extends Module {
 
     private static void line(VertexConsumer v, double x1, double y1, double z1,
                              double x2, double y2, double z2, Vec3d camera, int argb) {
-        double ax = x1 - camera.x, ay = y1 - camera.y, az = z1 - camera.z;
-        double bx = x2 - camera.x, by = y2 - camera.y, bz = z2 - camera.z;
+        // All effect coordinates are camera-relative offsets, so do not subtract camera position here.
+        double ax = x1, ay = y1, az = z1;
+        double bx = x2, by = y2, bz = z2;
         double dx = bx - ax, dy = by - ay, dz = bz - az;
         double length = Math.sqrt(dx * dx + dy * dy + dz * dz);
         if (length < 1.0e-6) return;
