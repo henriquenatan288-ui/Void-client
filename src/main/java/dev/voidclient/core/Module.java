@@ -72,7 +72,13 @@ public abstract class Module {
 
     /**
      * HUD / 2D overlay. Called every frame for enabled modules.
-     * Prefer this over ad-hoc render/renderHud methods.
      */
     public void onRender2D(GuiGraphicsExtractor context, float tickDelta) {}
+
+    /**
+     * Called when the client leaves a world / disconnects.
+     * Clear world-scoped caches here. Controllers that bind to the player should stop.
+     * Invoked for every module (enabled or not).
+     */
+    public void onWorldUnload() {}
 }

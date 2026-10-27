@@ -96,6 +96,12 @@ public class BreakWaves extends Module {
     }
 
     @Override
+    public void onWorldUnload() {
+        active.clear();
+        clearTrackedTarget();
+    }
+
+    @Override
     public void onTick() {
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null || mc.player == null) {

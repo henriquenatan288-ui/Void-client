@@ -57,6 +57,12 @@ public class SusChunkFinder extends Module {
     }
 
     @Override
+    public void onWorldUnload() {
+        hits.clear();
+        tick = 0;
+    }
+
+    @Override
     public void onTick() {
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null || mc.player == null) {

@@ -52,6 +52,12 @@ public class Freecam extends Module {
     }
 
     @Override
+    public void onWorldUnload() {
+        if (isEnabled()) disable();
+        else FreecamController.stop();
+    }
+
+    @Override
     public void onTick() {
         if (!isEnabled()) return;
         applySettings();

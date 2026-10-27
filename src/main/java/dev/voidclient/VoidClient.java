@@ -6,6 +6,7 @@ import dev.voidclient.core.event.EventBus;
 import dev.voidclient.core.event.events.KeyEvent;
 import dev.voidclient.core.event.events.Render2DEvent;
 import dev.voidclient.core.event.events.TickEvent;
+import dev.voidclient.core.event.events.WorldUnloadEvent;
 import dev.voidclient.gui.ClickGuiScreen;
 import dev.voidclient.modules.render.VoidRenderLayers;
 import dev.voidclient.modules.render.VoidWorldRenderer;
@@ -58,7 +59,19 @@ public class VoidClient implements ClientModInitializer {
                 "key.voidclient.clickgui", InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_RIGHT_SHIFT, category));
 
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> welcomePending = true);
-        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> welcomePending = false);
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
+            welcomePending = false;
+            if (EVENT_BUS != null) {
+                EVENT_BUS.post(new WorldUnloadEvent());
+            }
+            // Close ClickGUI so it does not hold a stale world reference
+            if (client != null && client.gui != null && client.gui.screen() instanceof ClickGuiScreen) {
+                client.gui.screen().onClose();
+            }
+            if (CONFIG_MANAGER != null) {
+                try { CONFIG_MANAGER.save(); } catch (Throwable ignored) {}
+            }
+        });
 
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             EVENT_BUS.post(new TickEvent());

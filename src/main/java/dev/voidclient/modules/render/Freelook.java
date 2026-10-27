@@ -57,6 +57,15 @@ public class Freelook extends Module {
     }
 
     @Override
+    public void onWorldUnload() {
+        if (isEnabled()) disable();
+        else {
+            FreelookController.stop();
+            previousPerspective = null;
+        }
+    }
+
+    @Override
     public void onTick() {
         if (!isEnabled()) return;
         FreelookController.sensitivity = sensitivity.getFloat();

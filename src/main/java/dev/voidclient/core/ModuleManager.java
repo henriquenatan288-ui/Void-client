@@ -5,6 +5,7 @@ import dev.voidclient.core.event.EventBus;
 import dev.voidclient.core.event.events.KeyEvent;
 import dev.voidclient.core.event.events.Render2DEvent;
 import dev.voidclient.core.event.events.TickEvent;
+import dev.voidclient.core.event.events.WorldUnloadEvent;
 import dev.voidclient.gui.ClickGuiModule;
 import dev.voidclient.modules.combat.AutoTotem;
 import dev.voidclient.modules.combat.SilentAura;
@@ -119,6 +120,7 @@ public class ModuleManager {
         eventBus.subscribe(TickEvent.class, this::onTick);
         eventBus.subscribe(Render2DEvent.class, this::onRender2D);
         eventBus.subscribe(KeyEvent.class, this::onKey);
+        eventBus.subscribe(WorldUnloadEvent.class, this::onWorldUnload);
     }
 
     private void register(Module module) { modules.add(module); }
@@ -135,6 +137,17 @@ public class ModuleManager {
 
     public List<Module> getEnabled() {
         return modules.stream().filter(Module::isEnabled).collect(Collectors.toList());
+    }
+
+    /** Drop world-scoped state for every module (enabled or not). */
+    public void notifyWorldUnload() {
+        for (Module module : modules) {
+            try {
+                module.onWorldUnload();
+            } catch (Exception error) {
+                logFailure(module, error);
+            }
+        }
     }
 
     private void logFailure(Module module, Exception error) {
@@ -170,5 +183,9 @@ public class ModuleManager {
         for (Module module : modules) {
             if (module.getKeybind() != -1 && module.getKeybind() == event.getKey()) module.toggle();
         }
+    }
+
+    private void onWorldUnload(WorldUnloadEvent event) {
+        notifyWorldUnload();
     }
 }
