@@ -14,7 +14,8 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-/** Expanding rings triggered when the locally tracked block changes to air. */
+/** Expanding rings triggered when the locally tracked block changes to air.
+ *  Uses world time (continuous) instead of discrete tick counters for smooth growth. */
 public class BreakWaves extends Module {
     private final NumberSetting waves = addSetting(
             new NumberSetting("Waves", "Number of expanding rings", 3, 1, 6, 1));
@@ -30,7 +31,6 @@ public class BreakWaves extends Module {
         super("BreakWaves", "Show expanding rings when you break a block.", Category.RENDER);
     }
 
-    /** Called by interaction-manager hooks while the local player is mining a block. */
     public static void trackBlockBreakTarget(BlockPos pos) {
         if (pos == null || VoidClient.MODULE_MANAGER == null) return;
         Module module = VoidClient.MODULE_MANAGER.getByName("BreakWaves");
@@ -47,10 +47,6 @@ public class BreakWaves extends Module {
         targetTrackedAt = mc.world.getTime();
     }
 
-    /**
-     * Called before ClientWorld applies a block-state update. This catches survival mining
-     * too, where the server confirms the break asynchronously rather than in breakBlock().
-     */
     public static void onClientBlockRemoved(BlockPos pos) {
         if (pos == null || trackedTarget == null || !trackedTarget.equals(pos)) return;
 
@@ -61,7 +57,6 @@ public class BreakWaves extends Module {
         }
 
         long age = mc.world.getTime() - targetTrackedAt;
-        VoidClient.LOGGER.info("BreakWaves saw air update at tracked block {}, age={} ticks", pos, age);
         if (age < 0 || age > 40) {
             clearTrackedTarget();
             return;
@@ -83,15 +78,15 @@ public class BreakWaves extends Module {
 
     private void spawn(BlockPos pos) {
         if (active.size() >= 4) active.remove(0);
-        active.add(new Wave(pos.getX() + 0.5, pos.getY() + 0.05, pos.getZ() + 0.5));
-        VoidClient.LOGGER.info("BreakWaves: created wave at {}", pos);
+        MinecraftClient mc = MinecraftClient.getInstance();
+        long now = mc.world != null ? mc.world.getTime() : 0L;
+        active.add(new Wave(pos.getX() + 0.5, pos.getY() + 0.05, pos.getZ() + 0.5, now));
     }
 
     @Override
     protected void onEnable() {
         active.clear();
         clearTrackedTarget();
-        VoidClient.LOGGER.info("BreakWaves enabled");
     }
 
     @Override
@@ -115,17 +110,19 @@ public class BreakWaves extends Module {
         }
         if (active.isEmpty()) return;
 
+        long now = mc.world.getTime();
         DustParticleEffect dust = new DustParticleEffect(color.getRgb(), 0.9f);
         int maxWaves = waves.getInt();
         Iterator<Wave> iterator = active.iterator();
         while (iterator.hasNext()) {
             Wave wave = iterator.next();
-            wave.age++;
+            // Continuous age from world time → smooth radius growth
+            float age = (float) (now - wave.bornAt);
 
             for (int ring = 0; ring < maxWaves; ring++) {
-                int age = wave.age - ring * 3;
-                if (age < 0 || age > 12) continue;
-                double radius = age * 0.32;
+                float ringAge = age - ring * 3.0f;
+                if (ringAge < 0 || ringAge > 12) continue;
+                double radius = ringAge * 0.32;
                 int points = 14;
                 for (int i = 0; i < points; i++) {
                     double angle = Math.PI * 2.0 * i / points;
@@ -136,17 +133,18 @@ public class BreakWaves extends Module {
                             0, 0.005, 0);
                 }
             }
-            if (wave.age > 12 + maxWaves * 3) iterator.remove();
+            if (age > 12 + maxWaves * 3) iterator.remove();
         }
     }
 
     private static final class Wave {
         final double x, y, z;
-        int age;
-        Wave(double x, double y, double z) {
+        final long bornAt;
+        Wave(double x, double y, double z, long bornAt) {
             this.x = x;
             this.y = y;
             this.z = z;
+            this.bornAt = bornAt;
         }
     }
 }
