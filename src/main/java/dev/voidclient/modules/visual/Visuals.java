@@ -107,7 +107,7 @@ public class Visuals extends Module {
             seen.add(id);
             PState s = states.computeIfAbsent(id, k -> new PState());
             double x = p.getX(), y = p.getY(), z = p.getZ();
-            boolean ground = p.onGround();                                   // [CONFIRMAR] se não compilar
+            boolean ground = p.onGround();
             boolean excluded = p.isSpectator() || !p.isAlive() || p.isPassenger()
                     || p.isInWater() || p.isInLava() || p.isFallFlying();
 
@@ -370,6 +370,17 @@ public class Visuals extends Module {
             sink.line(a, b, width * 1.8f, false, argb(rgb, alpha * 0.18), false);
         }
         sink.line(a, b, width, false, argb(rgb, alpha), false);
+    }
+
+    // Deterministic particle seed helper; stable across frames.
+    private static double h(int index, int channel) {
+        long x = (index * 0x9E3779B97F4A7C15L) ^ (channel * 0xBF58476D1CE4E5B9L);
+        x ^= x >>> 30;
+        x *= 0xBF58476D1CE4E5B9L;
+        x ^= x >>> 27;
+        x *= 0x94D049BB133111EBL;
+        x ^= x >>> 31;
+        return (x >>> 11) * (1.0 / (1L << 53));
     }
 
     // ------------------------------------------------------------------ utilitários
