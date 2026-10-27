@@ -70,6 +70,12 @@ public class Visuals extends Module {
     }
 
     @Override
+    public void onWorldUnload() {
+        states.clear();
+        fx.clear();
+    }
+
+    @Override
     public void onTick() {
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null || mc.player == null) {
@@ -135,6 +141,8 @@ public class Visuals extends Module {
         if (!isEnabled() || mc.level == null || mc.player == null) return;
         sk = sink;
         th = thickness.get();
+        // Prefer pipeline partialTick; if extraction path ever passes 0, resolve again
+        if (pt <= 1e-5f) pt = VoidDraw.resolvePartialTick(mc);
         long gt = mc.level.getGameTime();
         double sec = (gt + pt) / 20.0;
         alphaMul = opacity.get();
@@ -151,15 +159,16 @@ public class Visuals extends Module {
             double y = Mth.lerp(pt, p.yo, p.getY());
             double z = Mth.lerp(pt, p.zo, p.getZ());
             double h = p.getBbHeight();
+            float yaw = p.getViewYRot(pt);
             boolean firstPerson = local && cam.distanceToSqr(x, y + p.getEyeHeight(), z) < 0.5;
 
             if (!firstPerson) {
                 if (halo.get()) halo(x, y + h + 0.25, z, sec, ca, cb);
                 if (chinaHat.get()) hat(x, y + h, z, sec, ca, cb);
-                if (wings.get()) wings(x, y + h * 0.78, z, p.getYRot(), sec, ca, cb);
+                if (wings.get()) wings(x, y + h * 0.78, z, yaw, sec, ca, cb);
             }
             PState s = states.get(p.getId());
-            if (trail.get() && s != null) trailDraw(s, gt, sec, ca, cb);
+            if (trail.get() && s != null) trailDraw(s, gt, pt, ca, cb);
         }
 
         for (Fx e : fx) {
@@ -285,12 +294,12 @@ public class Visuals extends Module {
         }
     }
 
-    private void trailDraw(PState st, long gt, double sec, int ca, int cb) {
+    private void trailDraw(PState st, long gt, float pt, int ca, int cb) {
         boolean spark = "Sparkle".equals(trailStyle.get());
         double[] prev = null;
         int idx = 0;
         for (double[] p : st.trail) {
-            double age = gt - p[3];
+            double age = (gt - p[3]) + pt;
             idx++;
             if (age > 24) { prev = null; continue; }
             double f = 1 - age / 24.0;
