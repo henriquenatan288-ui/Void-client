@@ -6,22 +6,22 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
 
-/**
- * Independent free camera. Does NOT mutate player velocity, noGravity, perspective or packets.
- */
+/** Independent free camera with acceleration (no player physics mutation). */
 public final class FreecamController {
     private FreecamController() {}
 
     public static double baseSpeed = 20.0;
     public static double sprintMult = 3.0;
+    public static double accel = 12.0;
+    public static boolean verticalLock = false;
     public static boolean disableOnDamage = true;
     public static boolean blockInteractions = true;
-
     public static Runnable onAutoStop = () -> {};
 
     private static boolean active;
     private static LocalPlayer owner;
     private static double x, y, z;
+    private static double vx, vy, vz;
     private static float yaw, pitch;
     private static long lastNs;
     private static float lockedYaw, lockedPitch;
@@ -37,9 +37,8 @@ public final class FreecamController {
         LocalPlayer p = mc.player;
         if (active || p == null || mc.level == null) return;
         Vec3 eye = p.getEyePosition();
-        x = eye.x;
-        y = eye.y;
-        z = eye.z;
+        x = eye.x; y = eye.y; z = eye.z;
+        vx = vy = vz = 0;
         yaw = p.getYRot();
         pitch = p.getXRot();
         lockedYaw = yaw;
@@ -54,6 +53,7 @@ public final class FreecamController {
         active = false;
         owner = null;
         bodyLocked = false;
+        vx = vy = vz = 0;
     }
 
     public static void tick(Minecraft mc) {
@@ -75,7 +75,6 @@ public final class FreecamController {
         pitch = Mth.clamp(pitch + (float) dy * 0.15f, -90f, 90f);
     }
 
-    /** Mobile: touch often writes rot on the player; redirect delta to camera and restore body. */
     public static void captureTouchLook(LocalPlayer p) {
         if (!active || p == null || !bodyLocked) return;
         float py = p.getYRot();
@@ -96,7 +95,7 @@ public final class FreecamController {
     public static void step(Minecraft mc) {
         if (!active) return;
         long now = System.nanoTime();
-        double dt = Math.min((now - lastNs) / 1.0e9, 0.1);
+        double dt = Math.min((now - lastNs) / 1.0e9, 0.05);
         lastNs = now;
 
         try {
@@ -105,27 +104,40 @@ public final class FreecamController {
 
         double f = axis(mc.options.keyUp, mc.options.keyDown);
         double r = axis(mc.options.keyRight, mc.options.keyLeft);
-        double u = axis(mc.options.keyJump, mc.options.keyShift);
-        if (f == 0 && r == 0 && u == 0) return;
+        double u = verticalLock ? 0 : axis(mc.options.keyJump, mc.options.keyShift);
 
         double yr = Math.toRadians(yaw);
-        double pr = Math.toRadians(pitch);
+        double pr = verticalLock ? 0 : Math.toRadians(pitch);
         double fx = -Math.sin(yr) * Math.cos(pr);
-        double fy = -Math.sin(pr);
+        double fy = verticalLock ? 0 : -Math.sin(pr);
         double fz = Math.cos(yr) * Math.cos(pr);
         double rx = Math.cos(yr);
         double rz = Math.sin(yr);
 
-        double dx = fx * f + rx * r;
-        double dy = fy * f + u;
-        double dz = fz * f + rz * r;
-        double len = Math.sqrt(dx * dx + dy * dy + dz * dz);
-        if (len < 1.0e-6) return;
+        double wishX = fx * f + rx * r;
+        double wishY = fy * f + u;
+        double wishZ = fz * f + rz * r;
+        double wishLen = Math.sqrt(wishX * wishX + wishY * wishY + wishZ * wishZ);
+        double maxSpeed = baseSpeed * (mc.options.keySprint.isDown() ? sprintMult : 1.0);
 
-        double speed = baseSpeed * (mc.options.keySprint.isDown() ? sprintMult : 1.0) * dt / len;
-        x += dx * speed;
-        y += dy * speed;
-        z += dz * speed;
+        if (wishLen > 1.0e-6) {
+            wishX = wishX / wishLen * maxSpeed;
+            wishY = wishY / wishLen * maxSpeed;
+            wishZ = wishZ / wishLen * maxSpeed;
+            double a = Math.min(1.0, accel * dt);
+            vx += (wishX - vx) * a;
+            vy += (wishY - vy) * a;
+            vz += (wishZ - vz) * a;
+        } else {
+            double damp = Math.exp(-accel * 0.6 * dt);
+            vx *= damp;
+            vy *= damp;
+            vz *= damp;
+        }
+
+        x += vx * dt;
+        y += vy * dt;
+        z += vz * dt;
     }
 
     private static double axis(KeyMapping plus, KeyMapping minus) {
