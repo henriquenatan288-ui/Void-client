@@ -18,8 +18,6 @@ import java.util.Optional;
 import java.util.OptionalDouble;
 import java.util.concurrent.CopyOnWriteArrayList;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
-import net.fabricmc.fabric.api.client.rendering.v1.level.LevelExtractionContext;
-import net.fabricmc.fabric.api.client.rendering.v1.level.LevelExtractionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext;
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
 import net.minecraft.client.Minecraft;
@@ -36,9 +34,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Shape pipeline — extraction-era timing (A–D style):
- * extract on LevelExtractionEvents, draw after translucent terrain.
- * Soft-fail kept so one bad frame does not permanently disable visuals.
+ * Shape pipeline with smooth visual motion:
+ * extract + draw every render frame using (gameTime + partialTick).
+ * Soft-fail: one bad frame does not kill all visuals permanently.
  */
 public final class VoidDraw {
     private VoidDraw() {}
@@ -68,6 +66,9 @@ public final class VoidDraw {
     private static long lastFailLogNs;
     private static final int MAX_FAIL_STREAK = 30;
 
+    private static long smoothEpochNs = System.nanoTime();
+    private static long smoothWorldAnchor = Long.MIN_VALUE;
+
     private static final RenderPipeline XRAY = RenderPipelines.register(
             RenderPipeline.builder(RenderPipelines.DEBUG_FILLED_SNIPPET)
                     .withLocation(Identifier.fromNamespaceAndPath("voidclient", "pipeline/shapes_xray"))
@@ -85,13 +86,19 @@ public final class VoidDraw {
             new StagedVertexBuffer(() -> "VoidDraw buffer", RenderType.SMALL_BUFFER_SIZE);
 
     public static void init() {
-        LevelExtractionEvents.END_EXTRACTION.register(VoidDraw::extractAll);
-        LevelRenderEvents.AFTER_TRANSLUCENT_TERRAIN.register(VoidDraw::draw);
+        // Per-frame extract = smooth spin for Visuals / Particles / CustomSky / WorldFx
+        LevelRenderEvents.AFTER_TRANSLUCENT_TERRAIN.register(ctx -> {
+            extractFresh();
+            draw(ctx);
+        });
         ClientLifecycleEvents.CLIENT_STOPPING.register(c -> BUF.close());
-        LOG.info("VoidDraw initialized (extraction-era + soft-fail)");
+        LOG.info("VoidDraw initialized (per-frame extract, soft-fail)");
     }
 
-    /** Partial tick helper (modules may call). */
+    /**
+     * Real sub-tick time. If delta tracker returns 0, synthesize fraction of the tick
+     * from wall clock so animations never step at pure 20Hz.
+     */
     public static float resolvePartialTick(Minecraft mc) {
         float pt = 0f;
         try {
@@ -102,12 +109,32 @@ public final class VoidDraw {
                 pt = mc.getDeltaTracker().getGameTimeDeltaPartialTick(true);
             } catch (Throwable ignored) {}
         }
-        if (pt < 0f) pt = 0f;
-        if (pt > 1f) pt = 1f;
-        return pt;
+        if (pt > 1e-5f && pt <= 1.0001f) return Math.min(1f, pt);
+
+        long world = 0L;
+        if (mc.level != null) {
+            try { world = mc.level.getGameTime(); } catch (Throwable ignored) {}
+        }
+        long now = System.nanoTime();
+        if (world != smoothWorldAnchor) {
+            smoothWorldAnchor = world;
+            smoothEpochNs = now;
+        }
+        double frac = (now - smoothEpochNs) / 50_000_000.0;
+        if (frac < 0) frac = 0;
+        if (frac > 0.999) frac = 0.999;
+        return (float) frac;
     }
 
-    private static void extractAll(LevelExtractionContext ctx) {
+    public static double smoothSeconds(Minecraft mc) {
+        long gt = 0L;
+        if (mc.level != null) {
+            try { gt = mc.level.getGameTime(); } catch (Throwable ignored) {}
+        }
+        return (gt + resolvePartialTick(mc)) / 20.0;
+    }
+
+    private static void extractFresh() {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.level == null) {
             frame = new Frame(List.of());
