@@ -110,15 +110,7 @@ public class AntVanish extends Module {
         Minecraft mc = Minecraft.getInstance();
         if (mc.getConnection() == null) return out;
         for (PlayerInfo info : mc.getConnection().getOnlinePlayers()) {
-            try {
-                out.add(info.getProfile().name());
-            } catch (Throwable t) {
-                try {
-                    out.add(info.getProfile().getName());
-                } catch (Throwable t2) {
-                    out.add(String.valueOf(info.getProfile()));
-                }
-            }
+            out.add(info.getProfile().name());
         }
         return out;
     }
@@ -154,12 +146,7 @@ public class AntVanish extends Module {
                 e.dist = Math.sqrt(d2);
                 e.near = d2 <= r2;
                 e.spectator = p.isSpectator();
-                Vec3 look;
-                try {
-                    look = p.getLookAngle();
-                } catch (Throwable t) {
-                    look = p.getViewVector(1.0f);
-                }
+                Vec3 look = p.getViewVector(1.0f);
                 Vec3 to = mc.player.position().add(0, mc.player.getEyeHeight(), 0)
                         .subtract(p.position().add(0, p.getEyeHeight(), 0));
                 double len = to.length();
