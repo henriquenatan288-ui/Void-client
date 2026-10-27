@@ -83,6 +83,12 @@ public class Particles extends Module {
         int count = amount.getInt();
         Player player = mc.player;
 
+        // Use the same render-frame interpolation as the world renderer. Reading only
+        // getX/getY/getZ snaps the whole orbit to the last simulation tick while walking.
+        double playerX = net.minecraft.util.Mth.lerp(partialTick, player.xo, player.getX());
+        double playerY = net.minecraft.util.Mth.lerp(partialTick, player.yo, player.getY());
+        double playerZ = net.minecraft.util.Mth.lerp(partialTick, player.zo, player.getZ());
+
         Camera camera = mc.gameRenderer.mainCamera();
         var direction = camera.forwardVector();
         Vec3 forward = new Vec3(direction.x(), direction.y(), direction.z()).normalize();
@@ -99,11 +105,11 @@ public class Particles extends Module {
             if (alpha <= 0.01) continue;
 
             double orbit = radius * (0.65 + seed * 0.7);
-            double x = player.getX() + Math.cos(phase) * orbit;
-            double y = player.getY() + height.get()
+            double x = playerX + Math.cos(phase) * orbit;
+            double y = playerY + height.get()
                     + Math.sin(phase * 0.72 + seed * Math.PI * 2.0) * 0.28
                     + (life - 0.5) * 0.18;
-            double z = player.getZ() + Math.sin(phase) * orbit;
+            double z = playerZ + Math.sin(phase) * orbit;
             Vec3 center = new Vec3(x, y, z);
 
             double halfWidth = 0.22 + hash(i, 8) * 0.08;
