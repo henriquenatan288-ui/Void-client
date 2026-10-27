@@ -7,6 +7,7 @@ import dev.voidclient.core.event.events.KeyEvent;
 import dev.voidclient.core.event.events.Render2DEvent;
 import dev.voidclient.core.event.events.TickEvent;
 import dev.voidclient.gui.ClickGuiScreen;
+import dev.voidclient.modules.visual.Visuals;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
@@ -76,6 +77,7 @@ public class VoidClient implements ClientModInitializer {
         HudRenderCallback.EVENT.register((drawContext, tickCounter) -> {
             float tickDelta = tickCounter.getTickProgress(false);
             EVENT_BUS.post(new Render2DEvent(drawContext, tickDelta));
+            Visuals.renderScreenFilter(drawContext);
         });
 
         LOGGER.info("{} initialized. Modules: {}. Press Right Shift for GUI.",
