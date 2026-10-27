@@ -13,9 +13,11 @@ import java.util.List;
 import java.util.PriorityQueue;
 import java.util.Set;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.world.level.block.Block;
 
 /** Cached block scan with an exact nearest-first result set; the 3D renderer draws boxes/lines. */
@@ -39,6 +41,10 @@ public class BlockESP extends Module {
             new ColorSetting("Color", "ESP box and tracer color", 0xFFAA00FF));
     private final BooleanSetting tracers = addSetting(
             new BooleanSetting("Tracers", "Draw a line from the camera to selected blocks", true));
+    private final BooleanSetting exposedOnly = addSetting(
+            new BooleanSetting("Exposed only",
+                    "Only show selected blocks touching air or fluid; filters some Anti-Xray decoys but cannot reveal hidden ores.",
+                    false));
 
     private final List<BlockPos> found = new ArrayList<>(MAX_STORED_BLOCKS);
     private final PriorityQueue<ScanHit> nearest = new PriorityQueue<>(
@@ -51,6 +57,7 @@ public class BlockESP extends Module {
     private int scanXCursor;
     private int scanRange = -1;
     private String scanSelection = "";
+    private boolean scanExposedOnly;
     private int scanDelay;
     private BlockPos scanOrigin;
 
@@ -96,9 +103,13 @@ public class BlockESP extends Module {
 
         int radius = range.getInt();
         String selected = blocks.get();
-        if (radius != scanRange || !selected.equals(scanSelection)) {
+        boolean onlyExposed = exposedOnly.get();
+        if (radius != scanRange || !selected.equals(scanSelection)
+                || onlyExposed != scanExposedOnly) {
             scanRange = radius;
             scanSelection = selected;
+            scanExposedOnly = onlyExposed;
+            found.clear();
             scanCursor = 0;
             scanRows = List.of();
             scanRowCursor = 0;
@@ -162,7 +173,8 @@ public class BlockESP extends Module {
                     scanOrigin.getY() + row.y(),
                     scanOrigin.getZ() + row.z());
             Block block = mc.level.getBlockState(scanMutable).getBlock();
-            if (scanSelectedBlocks.contains(block)) {
+            if (scanSelectedBlocks.contains(block)
+                    && (!scanExposedOnly || isExposed(mc.level, scanMutable))) {
                 double distanceSquared = squaredDistance(scanMutable, scanOrigin);
                 if (nearest.size() < MAX_STORED_BLOCKS) {
                     nearest.add(new ScanHit(scanMutable.immutable(), distanceSquared));
@@ -193,6 +205,21 @@ public class BlockESP extends Module {
             scanXCursor = 0;
             scanDelay = RESCAN_DELAY_TICKS;
         }
+    }
+
+    /**
+     * A selected block is considered exposed if a loaded neighboring position is air or fluid.
+     * Unloaded chunks are never treated as air, avoiding false exposure at chunk boundaries.
+     */
+    private static boolean isExposed(ClientLevel level, BlockPos pos) {
+        BlockPos.MutableBlockPos neighbor = new BlockPos.MutableBlockPos();
+        for (Direction direction : Direction.values()) {
+            neighbor.setWithOffset(pos, direction);
+            if (!level.hasChunkAt(neighbor)) continue;
+            var neighborState = level.getBlockState(neighbor);
+            if (neighborState.isAir() || !neighborState.getFluidState().isEmpty()) return true;
+        }
+        return false;
     }
 
     private static List<ScanRow> buildScanRows(int radius) {
@@ -231,7 +258,8 @@ public class BlockESP extends Module {
         Minecraft mc = Minecraft.getInstance();
         if (mc.font == null) return;
         ctx.text(mc.font,
-                "BlockESP: " + found.size() + " found / " + blocks.getSelectedIds().size() + " selected",
+                "BlockESP: " + found.size() + " found / " + blocks.getSelectedIds().size() + " selected"
+                        + (exposedOnly.get() ? " / exposed only" : ""),
                 4, 40, color.get(), true);
     }
 }
