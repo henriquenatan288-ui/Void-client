@@ -7,6 +7,7 @@ import dev.voidclient.core.event.events.Render2DEvent;
 import dev.voidclient.core.event.events.TickEvent;
 import dev.voidclient.gui.ClickGuiModule;
 import dev.voidclient.modules.combat.AutoTotem;
+import dev.voidclient.modules.combat.SilentAura;
 import dev.voidclient.modules.combat.SlowHit;
 import dev.voidclient.modules.hud.ArrayListHud;
 import dev.voidclient.modules.hud.FPS;
@@ -24,7 +25,10 @@ import dev.voidclient.modules.render.Freelook;
 import dev.voidclient.modules.render.Fullbright;
 import dev.voidclient.modules.render.Particles;
 import dev.voidclient.modules.render.PlayerESP;
+import dev.voidclient.modules.render.SusChunkFinder;
 import dev.voidclient.modules.render.Tracers;
+import dev.voidclient.modules.utility.AutoTool;
+import dev.voidclient.modules.utility.FpsBoost;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.IdentityHashMap;
@@ -39,14 +43,18 @@ public class ModuleManager {
 
     public ModuleManager(EventBus eventBus) {
         register(new ClickGuiModule());
+        // Combat
         register(new AutoTotem());
         register(new SlowHit());
+        register(new SilentAura());
+        // Movement
         register(new Fly());
         register(new Jesus());
         register(new FlyBoat());
         register(new Speed());
         register(new NoFall());
         register(new ToggleSprint());
+        // Render
         register(new Freecam());
         register(new Freelook());
         register(new BlockESP());
@@ -55,6 +63,11 @@ public class ModuleManager {
         register(new Particles());
         register(new BreakWaves());
         register(new Fullbright());
+        register(new SusChunkFinder());
+        // Utility
+        register(new AutoTool());
+        register(new FpsBoost());
+        // HUD
         register(new FPS());
         register(new ArrayListHud());
         register(new Watermark());
@@ -106,6 +119,7 @@ public class ModuleManager {
                 else if (module instanceof Watermark watermark) watermark.render(event.getContext(), event.getTickDelta());
                 else if (module instanceof BlockESP blockEsp) blockEsp.renderHud(event.getContext(), event.getTickDelta());
                 else if (module instanceof PlayerESP playerEsp) playerEsp.renderHud(event.getContext(), event.getTickDelta());
+                else if (module instanceof SusChunkFinder sus) sus.renderHud(event.getContext(), event.getTickDelta());
                 else module.onRender2D(event.getTickDelta());
             } catch (Exception error) { logFailure(module, error); }
         }
