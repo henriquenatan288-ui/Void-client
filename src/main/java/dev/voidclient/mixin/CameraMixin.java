@@ -14,11 +14,6 @@ import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-/**
- * Freecam owns pos+rot; Freelook owns rotation.
- * setRotation ModifyVariable works on any caller (update/setup).
- * Position forced on update RETURN and setup RETURN (require=0).
- */
 @Mixin(Camera.class)
 public abstract class CameraMixin {
     private static final String UPDATE =
@@ -54,7 +49,6 @@ public abstract class CameraMixin {
         applyFreecamPos();
     }
 
-    /** Claude docs call this setup on some mappings; require=0 if absent. */
     @Inject(method = "setup(Lnet/minecraft/world/level/Level;Lnet/minecraft/world/entity/Entity;ZZF)V",
             at = @At("RETURN"), require = 0)
     private void voidclient$afterSetup(
@@ -64,8 +58,8 @@ public abstract class CameraMixin {
     }
 
     @Inject(method = "isDetached()Z", at = @At("HEAD"), cancellable = true, require = 0)
-    private void voidclient$freecamDetached(CallbackInfoReturnable<Boolean> cir) {
-        if (FreecamController.isActive()) {
+    private void voidclient$detached(CallbackInfoReturnable<Boolean> cir) {
+        if (FreecamController.isActive() || FreelookController.shouldPassThrough()) {
             cir.setReturnValue(true);
         }
     }
