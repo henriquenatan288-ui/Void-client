@@ -18,7 +18,6 @@ import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
 
-/** Player visuals: halo, jump circles, trail. Drawn via VoidDraw ribbons. */
 public class Visuals extends Module {
     private final BooleanSetting halo = addSetting(new BooleanSetting("Halo", "Ring above head", true));
     private final BooleanSetting trail = addSetting(new BooleanSetting("Trail", "Ribbon behind you", false));
@@ -86,39 +85,22 @@ public class Visuals extends Module {
                 }
                 s.jumped = false;
             }
-            if (ground) {
-                s.air = 0;
-                s.peak = y;
-            } else {
-                s.air++;
-            }
+            if (ground) { s.air = 0; s.peak = y; } else s.air++;
 
             if (trail.get()) {
                 double moved = Math.hypot(x - s.x, z - s.z);
                 if (s.trail.isEmpty() || moved > 0.02) s.trail.addLast(new double[]{x, y, z, now});
                 while (s.trail.size() > 30) s.trail.removeFirst();
-            } else {
-                s.trail.clear();
-            }
+            } else s.trail.clear();
 
-            s.x = x;
-            s.y = y;
-            s.z = z;
-            s.init = true;
-            s.ground = ground;
+            s.x = x; s.y = y; s.z = z; s.init = true; s.ground = ground;
         }
         states.keySet().retainAll(seen);
         while (fx.size() > 64) fx.remove(0);
     }
 
-    private void extract(VoidDraw.Sink sink, Minecraft mc) {
+    private void extract(VoidDraw.Sink sink, Minecraft mc, float pt) {
         if (!isEnabled() || mc.level == null || mc.player == null) return;
-        float pt;
-        try {
-            pt = mc.getDeltaTracker().getGameTimeDeltaPartialTick(false);
-        } catch (Throwable t) {
-            pt = 0f;
-        }
         long gt = mc.level.getGameTime();
         double sec = (gt + pt) / 20.0;
         double alpha = opacity.get();
@@ -158,9 +140,7 @@ public class Visuals extends Module {
         for (int i = 0; i <= seg; i++) {
             double ang = spin + i * Math.PI * 2 / seg;
             Vec3 p = new Vec3(cx + Math.cos(ang) * r, cy, cz + Math.sin(ang) * r);
-            if (prev != null) {
-                s.line(prev, p, w, false, argb(mix(ca, cb, (Math.cos(ang) + 1) * 0.5), alpha), false);
-            }
+            if (prev != null) s.line(prev, p, w, false, argb(mix(ca, cb, (Math.cos(ang) + 1) * 0.5), alpha), false);
             prev = p;
         }
     }
@@ -169,10 +149,7 @@ public class Visuals extends Module {
         double[] prev = null;
         for (double[] p : st.trail) {
             double age = gt - p[3];
-            if (age > 24) {
-                prev = null;
-                continue;
-            }
+            if (age > 24) { prev = null; continue; }
             if (prev != null) {
                 double f = 1 - age / 24.0;
                 s.line(new Vec3(prev[0], prev[1] + 0.9, prev[2]), new Vec3(p[0], p[1] + 0.9, p[2]),
@@ -182,18 +159,9 @@ public class Visuals extends Module {
         }
     }
 
-    private static double fade(double t) {
-        return clamp(Math.min(t / 0.08, (1 - t) / 0.1), 0, 1);
-    }
-
-    private static double clamp(double v, double lo, double hi) {
-        return Math.max(lo, Math.min(hi, v));
-    }
-
-    private static int argb(int rgb, double a) {
-        return ((int) Math.round(clamp(a, 0, 1) * 255) << 24) | (rgb & 0xFFFFFF);
-    }
-
+    private static double fade(double t) { return clamp(Math.min(t / 0.08, (1 - t) / 0.1), 0, 1); }
+    private static double clamp(double v, double lo, double hi) { return Math.max(lo, Math.min(hi, v)); }
+    private static int argb(int rgb, double a) { return ((int) Math.round(clamp(a, 0, 1) * 255) << 24) | (rgb & 0xFFFFFF); }
     private static int mix(int c1, int c2, double t) {
         t = clamp(t, 0, 1);
         int r = (int) (((c1 >> 16) & 255) * (1 - t) + ((c2 >> 16) & 255) * t);
@@ -201,7 +169,6 @@ public class Visuals extends Module {
         int b = (int) ((c1 & 255) * (1 - t) + (c2 & 255) * t);
         return (r << 16) | (g << 8) | b;
     }
-
     private static int hsv(double phase) {
         double h = ((phase % 1) + 1) % 1 * 6;
         int i = (int) h;
