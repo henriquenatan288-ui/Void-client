@@ -15,9 +15,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
- * Freecam: owns position + rotation.
- * Freelook: owns rotation only (body stays).
- * Uses ModifyVariable on setRotation so it works regardless of update/setup name.
+ * Freecam owns pos+rot; Freelook owns rotation.
+ * setRotation ModifyVariable works on any caller (update/setup).
+ * Position forced on update RETURN and setup RETURN (require=0).
  */
 @Mixin(Camera.class)
 public abstract class CameraMixin {
@@ -38,20 +38,29 @@ public abstract class CameraMixin {
         return pitch;
     }
 
-    @Inject(method = UPDATE, at = @At("RETURN"), require = 0)
-    private void voidclient$afterUpdate(
-            Level world,
-            Entity focusedEntity,
-            boolean thirdPerson,
-            boolean inverseView,
-            float tickProgress,
-            CallbackInfo ci) {
+    private void applyFreecamPos() {
         if (!FreecamController.isActive()) return;
         CameraInvoker invoker = (CameraInvoker) (Object) this;
         FreecamController.step(Minecraft.getInstance());
         Vec3 p = FreecamController.pos();
         invoker.voidclient$setPos(p);
         invoker.voidclient$setRotation(FreecamController.yaw(), FreecamController.pitch());
+    }
+
+    @Inject(method = UPDATE, at = @At("RETURN"), require = 0)
+    private void voidclient$afterUpdate(
+            Level world, Entity focusedEntity, boolean thirdPerson, boolean inverseView,
+            float tickProgress, CallbackInfo ci) {
+        applyFreecamPos();
+    }
+
+    /** Claude docs call this setup on some mappings; require=0 if absent. */
+    @Inject(method = "setup(Lnet/minecraft/world/level/Level;Lnet/minecraft/world/entity/Entity;ZZF)V",
+            at = @At("RETURN"), require = 0)
+    private void voidclient$afterSetup(
+            Level world, Entity focusedEntity, boolean thirdPerson, boolean inverseView,
+            float tickProgress, CallbackInfo ci) {
+        applyFreecamPos();
     }
 
     @Inject(method = "isDetached()Z", at = @At("HEAD"), cancellable = true, require = 0)
