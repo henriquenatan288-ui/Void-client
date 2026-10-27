@@ -7,6 +7,7 @@ import dev.voidclient.core.event.events.Render2DEvent;
 import dev.voidclient.core.event.events.TickEvent;
 import dev.voidclient.gui.ClickGuiModule;
 import dev.voidclient.modules.combat.AutoTotem;
+import dev.voidclient.modules.combat.SilentAura;
 import dev.voidclient.modules.combat.SlowHit;
 import dev.voidclient.modules.hud.ArrayListHud;
 import dev.voidclient.modules.hud.FPS;
@@ -34,13 +35,16 @@ import dev.voidclient.modules.render.Fullbright;
 import dev.voidclient.modules.render.Particles;
 import dev.voidclient.modules.render.PlayerESP;
 import dev.voidclient.modules.render.ScreenFilter;
+import dev.voidclient.modules.render.SusChunkFinder;
 import dev.voidclient.modules.render.Tracers;
 import dev.voidclient.modules.utility.AntVanish;
 import dev.voidclient.modules.utility.AutoEat;
 import dev.voidclient.modules.utility.AutoRespawn;
 import dev.voidclient.modules.utility.AutoSprint;
+import dev.voidclient.modules.utility.AutoTool;
 import dev.voidclient.modules.utility.ChestStealer;
 import dev.voidclient.modules.utility.CoordsCopy;
+import dev.voidclient.modules.utility.FpsBoost;
 import dev.voidclient.modules.utility.InvCleaner;
 import dev.voidclient.modules.utility.MiddleClickFriend;
 import dev.voidclient.modules.utility.Timer;
@@ -63,6 +67,7 @@ public class ModuleManager {
 
         register(new AutoTotem());
         register(new SlowHit());
+        register(new SilentAura());
 
         register(new Fly());
         register(new Jesus());
@@ -83,6 +88,7 @@ public class ModuleManager {
         register(new WorldFx());
         register(new ScreenFilter());
         register(new CustomSky());
+        register(new SusChunkFinder());
 
         register(new AutoSprint());
         register(new AutoRespawn());
@@ -93,6 +99,8 @@ public class ModuleManager {
         register(new InvCleaner());
         register(new Timer());
         register(new AntVanish());
+        register(new AutoTool());
+        register(new FpsBoost());
 
         register(new Derp());
         register(new NoHurtCam());
