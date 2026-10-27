@@ -18,8 +18,6 @@ import java.util.Optional;
 import java.util.OptionalDouble;
 import java.util.concurrent.CopyOnWriteArrayList;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
-import net.fabricmc.fabric.api.client.rendering.v1.level.LevelExtractionContext;
-import net.fabricmc.fabric.api.client.rendering.v1.level.LevelExtractionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext;
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
 import net.minecraft.client.Minecraft;
@@ -59,10 +57,13 @@ public final class VoidDraw {
     private record Frame(List<Shape> shapes) {}
 
     private static volatile Frame frame = new Frame(List.of());
-    /** Soft fail: skip frames after error, recover automatically (do NOT kill all visuals forever). */
     private static int failStreak;
     private static long lastFailLogNs;
     private static final int MAX_FAIL_STREAK = 30;
+
+    /** Last fractional second used when delta tracker returns 0 (keeps spin continuous). */
+    private static long smoothEpochNs = System.nanoTime();
+    private static long smoothWorldAnchor = Long.MIN_VALUE;
 
     private static final RenderPipeline XRAY = RenderPipelines.register(
             RenderPipeline.builder(RenderPipelines.DEBUG_FILLED_SNIPPET)
@@ -81,28 +82,71 @@ public final class VoidDraw {
             new StagedVertexBuffer(() -> "VoidDraw buffer", RenderType.SMALL_BUFFER_SIZE);
 
     public static void init() {
-        LevelExtractionEvents.END_EXTRACTION.register(VoidDraw::extractAll);
-        LevelRenderEvents.AFTER_TRANSLUCENT_TERRAIN.register(VoidDraw::draw);
+        // Extract + draw on the same render callback so animation runs at frame rate,
+        // not only at LevelExtraction (often tick-rate / pt=0 → teleporting spins).
+        LevelRenderEvents.AFTER_TRANSLUCENT_TERRAIN.register(ctx -> {
+            extractFresh();
+            draw(ctx);
+        });
         ClientLifecycleEvents.CLIENT_STOPPING.register(c -> BUF.close());
-        LOG.info("VoidDraw initialized (soft-fail draw, sticky tracers)");
+        LOG.info("VoidDraw initialized (per-frame extract for smooth motion)");
     }
 
-    private static void extractAll(LevelExtractionContext ctx) {
+    /**
+     * Resolve partial tick for smooth world-time animation.
+     * Falls back to a high-res fraction of the current tick when the tracker returns 0
+     * during some render phases (common cause of 20Hz "teleport" visuals).
+     */
+    public static float resolvePartialTick(Minecraft mc) {
+        float pt = 0f;
+        try {
+            pt = mc.getDeltaTracker().getGameTimeDeltaPartialTick(false);
+        } catch (Throwable ignored) {}
+        if (pt <= 1e-5f) {
+            try {
+                pt = mc.getDeltaTracker().getGameTimeDeltaPartialTick(true);
+            } catch (Throwable ignored) {}
+        }
+        if (pt > 1e-5f && pt < 1.0001f) return pt;
+
+        // Synthesize sub-tick fraction from wall clock, anchored to world time
+        long world = 0L;
+        if (mc.level != null) {
+            try { world = mc.level.getGameTime(); } catch (Throwable ignored) {}
+        }
+        long now = System.nanoTime();
+        if (world != smoothWorldAnchor) {
+            smoothWorldAnchor = world;
+            smoothEpochNs = now;
+        }
+        double frac = (now - smoothEpochNs) / 50_000_000.0; // 1 tick ≈ 50ms
+        if (frac < 0) frac = 0;
+        if (frac > 0.999) frac = 0.999;
+        return (float) frac;
+    }
+
+    /** Smooth seconds for orbit/spin: (gameTime + partial) / 20. */
+    public static double smoothSeconds(Minecraft mc) {
+        long gt = 0L;
+        if (mc.level != null) {
+            try { gt = mc.level.getGameTime(); } catch (Throwable ignored) {}
+        }
+        return (gt + resolvePartialTick(mc)) / 20.0;
+    }
+
+    private static void extractFresh() {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.level == null) {
             frame = new Frame(List.of());
             return;
         }
-        float pt = 0f;
-        try {
-            pt = mc.getDeltaTracker().getGameTimeDeltaPartialTick(false);
-        } catch (Throwable ignored) {}
+        float pt = resolvePartialTick(mc);
 
         List<Shape> out = new ArrayList<>(64);
         Sink sink = new Sink() {
             @Override
             public void line(Vec3 a, Vec3 b, float w, boolean ss, int argb, boolean xray) {
-                if (out.size() > 12_000) return; // hard cap geometry this frame
+                if (out.size() > 12_000) return;
                 out.add(new Seg(a, b, w, ss, argb, xray));
             }
 
@@ -156,7 +200,6 @@ public final class VoidDraw {
     private static void draw(LevelRenderContext ctx) {
         Frame f = frame;
         if (f.shapes().isEmpty()) return;
-        // Soft cooldown after repeated failures — recovers without killing the session
         if (failStreak >= MAX_FAIL_STREAK) {
             if ((System.nanoTime() / 1_000_000_000L) % 5 == 0) failStreak = MAX_FAIL_STREAK / 2;
             return;
@@ -169,7 +212,7 @@ public final class VoidDraw {
             long now = System.nanoTime();
             if (now - lastFailLogNs > 3_000_000_000L) {
                 lastFailLogNs = now;
-                LOG.error("VoidDraw frame failed (streak={}) — will retry, visuals not permanently disabled", failStreak, t);
+                LOG.error("VoidDraw frame failed (streak={}) — will retry", failStreak, t);
             }
             frame = new Frame(List.of());
         }
@@ -200,10 +243,7 @@ public final class VoidDraw {
         pose.translate(-cam.x, -cam.y, -cam.z);
         Matrix4fc m = pose.last().pose();
 
-        float pt = 0f;
-        try {
-            pt = mc.getDeltaTracker().getGameTimeDeltaPartialTick(false);
-        } catch (Throwable ignored) {}
+        float pt = resolvePartialTick(mc);
         Vec3 fwd = cameraForward(mc, pt);
         Vec3 origin = new Vec3(cam.x + fwd.x * 0.45, cam.y + fwd.y * 0.45, cam.z + fwd.z * 0.45);
 
