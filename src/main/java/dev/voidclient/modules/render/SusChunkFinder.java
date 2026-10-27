@@ -71,8 +71,8 @@ public class SusChunkFinder extends Module {
 
         for (int dx = -radius; dx <= radius; dx++) {
             for (int dz = -radius; dz <= radius; dz++) {
-                int cx = playerChunk.x + dx;
-                int cz = playerChunk.z + dz;
+                int cx = playerChunk.x() + dx;
+                int cz = playerChunk.z() + dz;
                 LevelChunk chunk;
                 try {
                     chunk = mc.level.getChunk(cx, cz);
