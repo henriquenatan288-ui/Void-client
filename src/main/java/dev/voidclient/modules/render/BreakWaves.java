@@ -14,15 +14,12 @@ import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 
-/**
- * Expanding hologram waves when a tracked block breaks (survival continuous + creative).
- * Drawn in VoidWorldRenderer (no-depth lines).
- */
+/** Expanding hologram waves — age is game-time based for smooth partialTick animation. */
 public class BreakWaves extends Module {
     private final NumberSetting waves = addSetting(
             new NumberSetting("Waves", "Ring layers", 4, 1, 8, 1));
     private final NumberSetting maxAge = addSetting(
-            new NumberSetting("Duration", "Lifetime ticks", 22, 8, 50, 1));
+            new NumberSetting("Duration", "Life ticks", 22, 8, 50, 1));
     private final ColorSetting color = addSetting(
             new ColorSetting("Color", "Hologram color", 0xCC00FFCC));
 
@@ -50,7 +47,6 @@ public class BreakWaves extends Module {
         trackedTarget = pos.immutable();
         trackedWorld = mc.level;
         targetTrackedAt = mc.level.getGameTime();
-        VoidClient.LOGGER.debug("BreakWaves track {} face={}", trackedTarget, face);
     }
 
     public static void onClientBlockRemoved(BlockPos pos) {
@@ -71,8 +67,7 @@ public class BreakWaves extends Module {
         Module module = VoidClient.MODULE_MANAGER == null
                 ? null : VoidClient.MODULE_MANAGER.getByName("BreakWaves");
         if (module instanceof BreakWaves breakWaves && breakWaves.isEnabled()) {
-            breakWaves.spawn(pos);
-            VoidClient.LOGGER.info("BreakWaves SPAWN at {} age={}t", pos, age);
+            breakWaves.spawn(pos, mc.level.getGameTime());
         }
         clearTrackedTarget();
     }
@@ -83,16 +78,15 @@ public class BreakWaves extends Module {
         targetTrackedAt = Long.MIN_VALUE;
     }
 
-    private void spawn(BlockPos pos) {
+    private void spawn(BlockPos pos, long now) {
         if (active.size() >= 8) active.remove(0);
-        active.add(new Wave(pos.getX() + 0.5, pos.getY() + 0.08, pos.getZ() + 0.5));
+        active.add(new Wave(pos.getX() + 0.5, pos.getY() + 0.08, pos.getZ() + 0.5, now));
     }
 
     @Override
     protected void onEnable() {
         active.clear();
         clearTrackedTarget();
-        VoidClient.LOGGER.info("BreakWaves enabled");
     }
 
     @Override
@@ -113,12 +107,12 @@ public class BreakWaves extends Module {
                 || mc.level.getGameTime() - targetTrackedAt > 50)) {
             clearTrackedTarget();
         }
+        long now = mc.level.getGameTime();
         int life = maxAge.getInt();
         Iterator<Wave> it = active.iterator();
         while (it.hasNext()) {
             Wave wave = it.next();
-            wave.age++;
-            if (wave.age > life) it.remove();
+            if (now - wave.born > life) it.remove();
         }
     }
 
@@ -132,11 +126,12 @@ public class BreakWaves extends Module {
 
     public static final class Wave {
         public final double x, y, z;
-        public int age;
-        Wave(double x, double y, double z) {
+        public final long born;
+        Wave(double x, double y, double z, long born) {
             this.x = x;
             this.y = y;
             this.z = z;
+            this.born = born;
         }
     }
 }
