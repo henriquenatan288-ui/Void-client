@@ -9,6 +9,7 @@ import dev.voidclient.core.setting.ModeSetting;
 import dev.voidclient.core.setting.NumberSetting;
 import dev.voidclient.core.setting.Setting;
 import dev.voidclient.gui.utils.RenderUtils;
+import dev.voidclient.modules.utility.AntVanish;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.KeyEvent;
@@ -16,7 +17,6 @@ import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import org.lwjgl.glfw.GLFW;
 
-/** Fullscreen module settings — scrollable for mobile. */
 public final class ModuleSettingsScreen extends Screen {
     private static final int HEADER = 46, FOOTER = 34, PAD = 12, BAR_W = 14;
 
@@ -144,6 +144,8 @@ public final class ModuleSettingsScreen extends Screen {
             }
         } else if (s instanceof BlockListSetting b) {
             button(ctx, x + w - 84, y + 4, 84, b.getSelectedIds().size() + " blocks >", mx, my);
+        } else if (s instanceof AntVanish.StaffListSetting st) {
+            button(ctx, x + w - 84, y + 4, 84, st.names().size() + " staff >", mx, my);
         }
     }
 
@@ -237,6 +239,8 @@ public final class ModuleSettingsScreen extends Screen {
                     if (!hit) c.cyclePalette();
                 } else if (s instanceof BlockListSetting b && minecraft != null) {
                     minecraft.gui.setScreen(new BlockSelectionScreen(this, b));
+                } else if (s instanceof AntVanish.StaffListSetting st && minecraft != null) {
+                    minecraft.gui.setScreen(new AntVanish.StaffListScreen(this, st));
                 }
                 return;
             }
