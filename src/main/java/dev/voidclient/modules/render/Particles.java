@@ -146,8 +146,7 @@ public class Particles extends Module {
     }
 
     private void neonLine(VoidDraw.Sink sink, Vec3 a, Vec3 b, int rgb, double alpha) {
-        sink.line(a, b, 0.065f, false, argb(rgb, alpha * 0.11), false);
-        sink.line(a, b, 0.034f, false, argb(rgb, alpha * 0.24), false);
+        sink.line(a, b, 0.045f, false, argb(rgb, alpha * 0.22), false);
         sink.line(a, b, 0.012f, false, argb(rgb, alpha), false);
     }
 
