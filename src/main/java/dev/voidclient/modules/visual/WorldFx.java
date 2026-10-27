@@ -8,7 +8,6 @@ import dev.voidclient.render.VoidDraw;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.phys.Vec3;
 
-/** Stateless ambient particles around the camera (mobile-friendly counts). */
 public class WorldFx extends Module {
     private final BooleanSetting fireflies = addSetting(new BooleanSetting("Fireflies", "Glowing bugs", true));
     private final BooleanSetting embers = addSetting(new BooleanSetting("Embers", "Rising sparks", false));
@@ -28,14 +27,8 @@ public class WorldFx extends Module {
         VoidDraw.EXTRACTORS.add(this::extract);
     }
 
-    private void extract(VoidDraw.Sink sink, Minecraft mc) {
+    private void extract(VoidDraw.Sink sink, Minecraft mc, float pt) {
         if (!isEnabled() || mc.level == null || mc.player == null) return;
-        float pt;
-        try {
-            pt = mc.getDeltaTracker().getGameTimeDeltaPartialTick(false);
-        } catch (Throwable t) {
-            pt = 0f;
-        }
         double time = (mc.level.getGameTime() + pt) / 20.0;
         Vec3 cam = mc.gameRenderer.mainCamera().position();
         int n = count.getInt();
@@ -64,38 +57,24 @@ public class WorldFx extends Module {
                     vz = Math.cos(time * 0.45 + ph) * 0.4;
                     double pulse = Math.sin(time * 2 + ph * 3);
                     a *= 0.35 + 0.65 * pulse * pulse;
-                    rgb = 0xCCFF55;
-                    sz = 0.06;
+                    rgb = 0xCCFF55; sz = 0.06;
                 }
                 case EMBER -> {
-                    vx = Math.sin(time + ph) * 0.3;
-                    vz = Math.cos(time + ph) * 0.3;
-                    vy = 0.9 + h(i, 5);
-                    rgb = mix(0xFF4500, 0xFFC107, h(i, 6));
-                    sz = 0.045;
+                    vx = Math.sin(time + ph) * 0.3; vz = Math.cos(time + ph) * 0.3; vy = 0.9 + h(i, 5);
+                    rgb = mix(0xFF4500, 0xFFC107, h(i, 6)); sz = 0.045;
                 }
                 case LEAF -> {
                     vx = wx * 0.6 + Math.sin(time * 1.5 + ph) * 0.5;
-                    vz = wz * 0.6 + Math.cos(time * 1.3 + ph) * 0.5;
-                    vy = -0.9;
-                    rgb = mix(0x4CAF50, 0xE67E22, h(i, 4));
-                    sz = 0.08;
+                    vz = wz * 0.6 + Math.cos(time * 1.3 + ph) * 0.5; vy = -0.9;
+                    rgb = mix(0x4CAF50, 0xE67E22, h(i, 4)); sz = 0.08;
                 }
                 case ASH -> {
-                    vx = wx * 0.3;
-                    vz = wz * 0.3;
-                    vy = -0.35;
-                    rgb = mix(0x777777, 0xBBBBBB, h(i, 7));
-                    sz = 0.04;
-                    a *= 0.8;
+                    vx = wx * 0.3; vz = wz * 0.3; vy = -0.35;
+                    rgb = mix(0x777777, 0xBBBBBB, h(i, 7)); sz = 0.04; a *= 0.8;
                 }
                 default -> {
-                    vx = wx * 0.25;
-                    vz = wz * 0.25;
-                    vy = Math.sin(time + ph) * 0.08;
-                    rgb = 0xFFF2A8;
-                    sz = 0.03;
-                    a *= 0.7;
+                    vx = wx * 0.25; vz = wz * 0.25; vy = Math.sin(time + ph) * 0.08;
+                    rgb = 0xFFF2A8; sz = 0.03; a *= 0.7;
                 }
             }
             double px = wrap(h(i, 0) * size + vx * time - (cam.x - R), size) + cam.x - R;
