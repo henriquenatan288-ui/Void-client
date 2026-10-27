@@ -56,9 +56,9 @@ public final class VoidDraw {
     private record Seg(Vec3 a, Vec3 b, float width, boolean screenScale, int argb, boolean xray) implements Shape {}
     private record Fill(double x0, double y0, double z0, double x1, double y1, double z1, int argb, boolean xray) implements Shape {}
     private record Tr(Vec3 target, float width, int argb) implements Shape {}
-    private record Frame(List<Shape> shapes, Vec3 forward) {}
+    private record Frame(List<Shape> shapes) {}
 
-    private static volatile Frame frame = new Frame(List.of(), new Vec3(0, 0, 1));
+    private static volatile Frame frame = new Frame(List.of());
     private static volatile boolean broken;
 
     private static final RenderPipeline XRAY = RenderPipelines.register(
@@ -81,14 +81,14 @@ public final class VoidDraw {
         LevelExtractionEvents.END_EXTRACTION.register(VoidDraw::extractAll);
         LevelRenderEvents.AFTER_TRANSLUCENT_TERRAIN.register(VoidDraw::draw);
         ClientLifecycleEvents.CLIENT_STOPPING.register(c -> BUF.close());
-        LOG.info("VoidDraw initialized (ribbon/quad path, 3-arg extractors)");
+        LOG.info("VoidDraw initialized (sticky tracers + smooth extractors)");
     }
 
     private static void extractAll(LevelExtractionContext ctx) {
         if (broken) return;
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.level == null) {
-            frame = new Frame(List.of(), new Vec3(0, 0, 1));
+            frame = new Frame(List.of());
             return;
         }
         float pt = 0f;
@@ -120,7 +120,7 @@ public final class VoidDraw {
                 LOG.error("Extractor failed", t);
             }
         }
-        frame = new Frame(List.copyOf(out), cameraForward(mc, pt));
+        frame = new Frame(List.copyOf(out));
     }
 
     private static Vec3 cameraForward(Minecraft mc, float pt) {
@@ -132,9 +132,12 @@ public final class VoidDraw {
         } else if (FreelookController.isActive()) {
             yaw = FreelookController.yaw();
             pitch = FreelookController.pitch();
-        } else {
+        } else if (mc.player != null) {
             yaw = mc.player.getViewYRot(pt);
             pitch = mc.player.getViewXRot(pt);
+        } else {
+            yaw = 0;
+            pitch = 0;
         }
         double yr = Math.toRadians(yaw);
         double pr = Math.toRadians(pitch);
@@ -176,7 +179,14 @@ public final class VoidDraw {
         pose.translate(-cam.x, -cam.y, -cam.z);
         Matrix4fc m = pose.last().pose();
 
-        Vec3 origin = cam.add(f.forward());
+        // Sticky crosshair: origin = this-frame camera + look * 0.45 (not extract-time / player body)
+        float pt = 0f;
+        try {
+            pt = mc.getDeltaTracker().getGameTimeDeltaPartialTick(false);
+        } catch (Throwable ignored) {}
+        Vec3 fwd = cameraForward(mc, pt);
+        Vec3 origin = new Vec3(cam.x + fwd.x * 0.45, cam.y + fwd.y * 0.45, cam.z + fwd.z * 0.45);
+
         for (Shape s : f.shapes()) {
             if (s instanceof Seg g) {
                 ribbon(m, g.xray() ? vX : vD, g.a(), g.b(), cam, g.width(), g.screenScale(), g.argb());
