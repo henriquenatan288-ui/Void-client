@@ -5,6 +5,7 @@ import dev.voidclient.core.Module;
 import dev.voidclient.core.setting.BooleanSetting;
 import dev.voidclient.core.setting.ColorSetting;
 import dev.voidclient.core.setting.NumberSetting;
+import dev.voidclient.core.setting.ModeSetting;
 import dev.voidclient.render.VoidDraw;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -14,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
@@ -41,6 +43,21 @@ public class Visuals extends Module {
     private final ColorSetting colorB = addSetting(new ColorSetting("Color B", "Secondary", 0xFF00E5FF));
     private final NumberSetting opacity = addSetting(new NumberSetting("Opacity", "Alpha", 0.8, 0.1, 1.0, 0.05));
     private final NumberSetting size = addSetting(new NumberSetting("Size", "Effect size", 1.4, 0.6, 3.0, 0.1));
+
+    private final BooleanSetting neonGlow = addSetting(
+            new BooleanSetting("Neon glow", "Soft translucent glow around visual effects", true));
+    private final BooleanSetting customSky = addSetting(
+            new BooleanSetting("Custom sky", "Add a subtle neon starfield to the sky", false));
+    private final ModeSetting skyStyle = addSetting(new ModeSetting(
+            "Sky style", "Custom sky appearance", "Nebula", "Nebula", "Aurora", "Starfield"));
+    private final NumberSetting skyIntensity = addSetting(
+            new NumberSetting("Sky intensity", "Strength of sky effects", 0.7, 0.2, 1.0, 0.05));
+    private final BooleanSetting screenFilter = addSetting(
+            new BooleanSetting("Screen filter", "Apply a subtle color grade while playing", false));
+    private final ModeSetting filterStyle = addSetting(new ModeSetting(
+            "Filter style", "Screen color tint", "Violet", "Violet", "Cyan", "Amber", "Night"));
+    private final NumberSetting filterOpacity = addSetting(
+            new NumberSetting("Filter opacity", "Screen tint strength", 0.12, 0.02, 0.35, 0.01));
 
     private static final int JUMP = 0, SHOCK = 1, FOOT = 2;
 
@@ -144,6 +161,7 @@ public class Visuals extends Module {
         int ca = rainbow.get() ? hsv(sec * 0.2) : (colorA.get() & 0xFFFFFF);
         int cb = rainbow.get() ? hsv(sec * 0.2 + 0.5) : (colorB.get() & 0xFFFFFF);
         Vec3 cam = mc.gameRenderer.mainCamera().position();
+        if (customSky.get()) drawCustomSky(sink, cam, sec);
 
         for (AbstractClientPlayer p : mc.level.players()) {
             boolean local = p == mc.player;
@@ -195,13 +213,100 @@ public class Visuals extends Module {
     }
 
     // ------------------------------------------------------------------ formas
+    /**
+     * Draws a subtle camera-relative starfield. Depth-tested world geometry makes
+     * terrain naturally occlude stars, so it decorates the sky instead of the HUD.
+     */
+    private void drawCustomSky(VoidDraw.Sink sink, Vec3 cam, double sec) {
+        int starCount = skyStyle.is("Starfield") ? 72 : 48;
+        for (int i = 0; i < starCount; i++) {
+            double azimuth = h(i, 0) * Math.PI * 2.0;
+            double elevation = 0.08 + h(i, 1) * 0.88;
+            double horizontal = Math.sqrt(Math.max(0.0, 1.0 - elevation * elevation));
+            double distance = 78.0 + h(i, 2) * 16.0;
+            double x = cam.x + Math.cos(azimuth) * horizontal * distance;
+            double y = cam.y + elevation * distance;
+            double z = cam.z + Math.sin(azimuth) * horizontal * distance;
+            double pulse = 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(sec * (0.7 + h(i, 4)) + h(i, 5) * 6.28));
+            int rgb = skyColor(i);
+            double s = 0.045 + h(i, 6) * 0.07;
+            sink.box(x - s, y - s, z - s, x + s, y + s, z + s,
+                    argb(rgb, skyIntensity.get() * pulse * 0.72), false);
+            if (i % 12 == 0) {
+                Vec3 a = new Vec3(x - s * 2.2, y, z);
+                Vec3 b = new Vec3(x + s * 2.2, y, z);
+                neonLine(sink, a, b, 0.009f, rgb, skyIntensity.get() * pulse * 0.42);
+                neonLine(sink, new Vec3(x, y - s * 2.2, z),
+                        new Vec3(x, y + s * 2.2, z), 0.009f, rgb,
+                        skyIntensity.get() * pulse * 0.42);
+            }
+        }
+
+        if (skyStyle.is("Nebula")) {
+            ring(sink, cam.x, cam.y + 25.0, cam.z, 72.0, 0.018, 56,
+                    sec * 0.018, 0x32E9FF, 0x9B54FF, skyIntensity.get() * 0.16);
+            ring(sink, cam.x, cam.y + 32.0, cam.z, 88.0, 0.014, 56,
+                    -sec * 0.012, 0x8A4DFF, 0x48F6B8, skyIntensity.get() * 0.10);
+        } else if (skyStyle.is("Aurora")) {
+            for (int band = 0; band < 3; band++) {
+                Vec3 previous = null;
+                for (int j = 0; j <= 56; j++) {
+                    double angle = j * Math.PI * 2.0 / 56.0;
+                    double radius = 64.0 + band * 8.0;
+                    double y = cam.y + 27.0 + Math.sin(angle * 2.0 + sec * 0.22 + band) * (2.0 + band);
+                    Vec3 point = new Vec3(cam.x + Math.cos(angle) * radius, y,
+                            cam.z + Math.sin(angle) * radius);
+                    if (previous != null) {
+                        int rgb = mix(0x39F2FF, 0xB24CFF, (Math.sin(angle + band) + 1.0) * 0.5);
+                        neonLine(sink, previous, point, 0.022f, rgb,
+                                skyIntensity.get() * 0.12);
+                    }
+                    previous = point;
+                }
+            }
+        }
+    }
+
+    private int skyColor(int index) {
+        if (skyStyle.is("Aurora")) return switch (index % 3) {
+            case 0 -> 0x48FFD0;
+            case 1 -> 0x48DFFF;
+            default -> 0xAD6BFF;
+        };
+        if (skyStyle.is("Starfield")) return index % 2 == 0 ? 0xC8D7FF : 0xFFFFFF;
+        return switch (index % 3) {
+            case 0 -> 0x46F1FF;
+            case 1 -> 0xA967FF;
+            default -> 0x91FFCB;
+        };
+    }
+
+    /** Called by the HUD hook only while no menu is open. */
+    public void renderScreenFilter(GuiGraphicsExtractor ctx) {
+        if (!isEnabled() || !screenFilter.get()) return;
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null || mc.gui.screen() != null) return;
+
+        int rgb = switch (filterStyle.get()) {
+            case "Cyan" -> 0x0C8EAA;
+            case "Amber" -> 0xA64C16;
+            case "Night" -> 0x121C72;
+            default -> 0x541BA0;
+        };
+        int alpha = (int) Math.round(filterOpacity.get() * 255.0);
+        int color = (alpha << 24) | (rgb & 0x00FFFFFF);
+        ctx.fill(0, 0, mc.getWindow().getGuiScaledWidth(),
+                mc.getWindow().getGuiScaledHeight(), color);
+    }
+
     private static void ring(VoidDraw.Sink s, double cx, double cy, double cz, double r, double w,
                              int seg, double spin, int ca, int cb, double alpha) {
         Vec3 prev = null;
         for (int i = 0; i <= seg; i++) {
             double ang = spin + i * Math.PI * 2 / seg;
             Vec3 p = new Vec3(cx + Math.cos(ang) * r, cy, cz + Math.sin(ang) * r);
-            if (prev != null) s.line(prev, p, (float) w, false, argb(mix(ca, cb, (Math.cos(ang) + 1) * 0.5), alpha), false);
+            if (prev != null) neonLine(s, prev, p, (float) w,
+                    mix(ca, cb, (Math.cos(ang) + 1) * 0.5), alpha);
             prev = p;
         }
     }
@@ -213,7 +318,8 @@ public class Visuals extends Module {
         for (int i = 0; i < spokes; i++) {
             double ang = sec * 0.2 + i * Math.PI * 2 / spokes;
             Vec3 rim = new Vec3(x + Math.cos(ang) * r, y - 0.02, z + Math.sin(ang) * r);
-            s.line(apex, rim, 0.05f, false, argb(mix(ca, cb, (Math.cos(ang) + 1) * 0.5), alpha), false);
+            neonLine(s, apex, rim, 0.05f,
+                    mix(ca, cb, (Math.cos(ang) + 1) * 0.5), alpha);
         }
         ring(s, x, y - 0.02, z, r, 0.05, 32, sec * 0.2, ca, cb, alpha);
     }
@@ -236,7 +342,7 @@ public class Visuals extends Module {
                 lx /= n; ly /= n; lz /= n;
                 Vec3 base = new Vec3(x + rx * side * 0.12 + bx * 0.2, y + 0.1 + 0.06 * k, z + rz * side * 0.12 + bz * 0.2);
                 Vec3 tip = new Vec3(base.x + rx * lx * len + bx * lz * len, base.y + ly * len, base.z + rz * lx * len + bz * lz * len);
-                s.line(base, tip, 0.08f, false, argb(mix(ca, cb, k), alpha * (1 - 0.35 * k)), false);
+                neonLine(s, base, tip, 0.08f, mix(ca, cb, k), alpha * (1 - 0.35 * k));
             }
         }
     }
@@ -248,11 +354,22 @@ public class Visuals extends Module {
             if (age > 24) { prev = null; continue; }
             if (prev != null) {
                 double f = 1 - age / 24.0;
-                s.line(new Vec3(prev[0], prev[1] + 0.9, prev[2]), new Vec3(p[0], p[1] + 0.9, p[2]),
-                        0.28f, false, argb(mix(ca, cb, 1 - f), alpha * 0.6 * f), false);
+                neonLine(s, new Vec3(prev[0], prev[1] + 0.9, prev[2]),
+                        new Vec3(p[0], p[1] + 0.9, p[2]), 0.28f,
+                        mix(ca, cb, 1 - f), alpha * 0.6 * f);
             }
             prev = p;
         }
+    }
+
+    private void neonLine(VoidDraw.Sink sink, Vec3 a, Vec3 b, float width,
+                          int rgb, double alpha) {
+        if (alpha <= 0.001) return;
+        if (neonGlow.get()) {
+            sink.line(a, b, width * 2.0f, false, argb(rgb, alpha * 0.10), false);
+            sink.line(a, b, width * 1.28f, false, argb(rgb, alpha * 0.25), false);
+        }
+        sink.line(a, b, width, false, argb(rgb, alpha), false);
     }
 
     // ------------------------------------------------------------------ utilitários
