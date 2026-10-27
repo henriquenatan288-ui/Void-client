@@ -12,7 +12,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
 
-/** Bridges existing modules into VoidDraw extractors (ribbon rendering). */
 public final class EspExtractors {
     private EspExtractors() {}
 
@@ -23,7 +22,7 @@ public final class EspExtractors {
         VoidDraw.EXTRACTORS.add(EspExtractors::breakWaves);
     }
 
-    private static void blockEsp(VoidDraw.Sink sink, Minecraft mc) {
+    private static void blockEsp(VoidDraw.Sink sink, Minecraft mc, float pt) {
         Module mod = VoidClient.MODULE_MANAGER == null ? null : VoidClient.MODULE_MANAGER.getByName("BlockESP");
         if (!(mod instanceof BlockESP esp) || !esp.isEnabled()) return;
         int col = esp.getEspColor();
@@ -32,47 +31,37 @@ public final class EspExtractors {
             double x0 = p.getX(), y0 = p.getY(), z0 = p.getZ();
             double x1 = x0 + 1, y1 = y0 + 1, z1 = z0 + 1;
             outlineBox(sink, x0, y0, z0, x1, y1, z1, 1.5f, col);
-            if (tracersOn) {
-                sink.tracer(new Vec3(x0 + 0.5, y0 + 0.5, z0 + 0.5), 2.0f, col);
-            }
+            if (tracersOn) sink.tracer(new Vec3(x0 + 0.5, y0 + 0.5, z0 + 0.5), 2.0f, col);
         }
     }
 
-    private static void playerEsp(VoidDraw.Sink sink, Minecraft mc) {
+    private static void playerEsp(VoidDraw.Sink sink, Minecraft mc, float pt) {
         Module mod = VoidClient.MODULE_MANAGER == null ? null : VoidClient.MODULE_MANAGER.getByName("PlayerESP");
         if (!(mod instanceof PlayerESP esp) || !esp.isEnabled()) return;
         int col = esp.getEspColor();
-        float pt = 1.0f;
-        try {
-            pt = mc.getDeltaTracker().getGameTimeDeltaPartialTick(false);
-        } catch (Throwable ignored) {}
         for (AbstractClientPlayer other : esp.getTargets()) {
-            double x = lerp(other.xo, other.getX(), pt);
-            double y = lerp(other.yo, other.getY(), pt);
-            double z = lerp(other.zo, other.getZ(), pt);
+            double x = Mth.lerp(pt, other.xo, other.getX());
+            double y = Mth.lerp(pt, other.yo, other.getY());
+            double z = Mth.lerp(pt, other.zo, other.getZ());
             float hw = other.getBbWidth() / 2.0f;
             float h = other.getBbHeight();
             outlineBox(sink, x - hw, y, z - hw, x + hw, y + h, z + hw, 1.5f, col);
         }
     }
 
-    private static void tracers(VoidDraw.Sink sink, Minecraft mc) {
+    private static void tracers(VoidDraw.Sink sink, Minecraft mc, float pt) {
         Module mod = VoidClient.MODULE_MANAGER == null ? null : VoidClient.MODULE_MANAGER.getByName("Tracers");
         if (!(mod instanceof Tracers tracers) || !tracers.isEnabled()) return;
-        float pt = 1.0f;
-        try {
-            pt = mc.getDeltaTracker().getGameTimeDeltaPartialTick(false);
-        } catch (Throwable ignored) {}
         for (AbstractClientPlayer other : tracers.getTargets()) {
-            double x = lerp(other.xo, other.getX(), pt);
-            double y = lerp(other.yo, other.getY(), pt);
-            double z = lerp(other.zo, other.getZ(), pt);
+            double x = Mth.lerp(pt, other.xo, other.getX());
+            double y = Mth.lerp(pt, other.yo, other.getY());
+            double z = Mth.lerp(pt, other.zo, other.getZ());
             int col = tracers.getTracerColor(other);
             sink.tracer(new Vec3(x, y + other.getBbHeight() * 0.5, z), 2.0f, col);
         }
     }
 
-    private static void breakWaves(VoidDraw.Sink sink, Minecraft mc) {
+    private static void breakWaves(VoidDraw.Sink sink, Minecraft mc, float pt) {
         Module mod = VoidClient.MODULE_MANAGER == null ? null : VoidClient.MODULE_MANAGER.getByName("BreakWaves");
         if (!(mod instanceof BreakWaves waves) || !waves.isEnabled()) return;
         int base = waves.getWaveColor();
@@ -120,12 +109,6 @@ public final class EspExtractors {
                 {e, f}, {f, g}, {g, h}, {h, e},
                 {a, e}, {b, f}, {c, g}, {d, h}
         };
-        for (Vec3[] ed : edges) {
-            sink.line(ed[0], ed[1], width, true, col, true);
-        }
-    }
-
-    private static double lerp(double a, double b, float t) {
-        return Mth.lerp(t, a, b);
+        for (Vec3[] ed : edges) sink.line(ed[0], ed[1], width, true, col, true);
     }
 }
