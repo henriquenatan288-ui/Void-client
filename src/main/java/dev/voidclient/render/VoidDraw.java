@@ -10,8 +10,6 @@ import com.mojang.blaze3d.textures.GpuTextureView;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.blaze3d.vertex.VertexFormat;
-import dev.voidclient.freecam.FreecamController;
-import dev.voidclient.freelook.FreelookController;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -22,8 +20,10 @@ import net.fabricmc.fabric.api.client.rendering.v1.level.LevelExtractionContext;
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelExtractionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext;
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
+import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.util.Mth;
 import net.minecraft.client.renderer.StagedVertexBuffer;
 import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.resources.Identifier;
@@ -45,7 +45,7 @@ public final class VoidDraw {
     private static final Logger LOG = LoggerFactory.getLogger("VoidClient/Draw");
 
     public interface Extractor {
-        void extract(Sink sink, Minecraft mc);
+        void extract(Sink sink, Minecraft mc, float partialTick);
     }
 
     public interface Sink {
@@ -98,6 +98,9 @@ public final class VoidDraw {
             return;
         }
 
+        float partialTick = Mth.clamp(
+                ctx.deltaTracker().getGameTimeDeltaPartialTick(false), 0.0f, 1.0f);
+
         List<Shape> out = new ArrayList<>();
         Sink sink = new Sink() {
             @Override
@@ -117,31 +120,19 @@ public final class VoidDraw {
         };
         for (Extractor e : EXTRACTORS) {
             try {
-                e.extract(sink, mc);
+                e.extract(sink, mc, partialTick);
             } catch (Throwable t) {
                 LOG.error("Extractor failed", t);
             }
         }
-        frame = new Frame(List.copyOf(out), cameraForward(mc));
+        frame = new Frame(List.copyOf(out), cameraForward(ctx.camera()));
     }
 
-    private static Vec3 cameraForward(Minecraft mc) {
-        float yaw;
-        float pitch;
-        if (FreecamController.isActive()) {
-            yaw = FreecamController.yaw();
-            pitch = FreecamController.pitch();
-        } else if (FreelookController.isActive()) {
-            yaw = FreelookController.yaw();
-            pitch = FreelookController.pitch();
-        } else {
-            float pt = mc.getDeltaTracker().getGameTimeDeltaPartialTick(false);
-            yaw = mc.player.getViewYRot(pt);
-            pitch = mc.player.getViewXRot(pt);
-        }
-        double yr = Math.toRadians(yaw);
-        double pr = Math.toRadians(pitch);
-        return new Vec3(-Math.sin(yr) * Math.cos(pr), -Math.sin(pr), Math.cos(yr) * Math.cos(pr));
+    private static Vec3 cameraForward(Camera camera) {
+        // Use the actual interpolated camera direction for this extraction frame.
+        // This stays aligned with the renderer camera in normal view, freecam, and freelook.
+        var forward = camera.forwardVector();
+        return new Vec3(forward.x(), forward.y(), forward.z());
     }
 
     private static void draw(LevelRenderContext ctx) {
