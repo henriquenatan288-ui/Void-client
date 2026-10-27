@@ -68,6 +68,9 @@ public final class VoidWorldRenderer {
         Matrix4f pose = matrices.last().pose();
         VertexConsumer builder = STAGED.getVertexBuilder(draw);
         float partialTick = 1.0f;
+        try {
+            partialTick = mc.getDeltaTracker().getGameTimeDeltaPartialTick(false);
+        } catch (Throwable ignored) {}
 
         Module blockMod = VoidClient.MODULE_MANAGER.getByName("BlockESP");
         if (blockMod instanceof BlockESP blockEsp && blockEsp.isEnabled()) {
@@ -113,20 +116,19 @@ public final class VoidWorldRenderer {
             int baseColor = breakWaves.getWaveColor();
             int ringCount = breakWaves.getWaveCount();
             int maxAge = Math.max(1, breakWaves.getMaxAge());
+            long now = mc.level.getGameTime();
             for (BreakWaves.Wave wave : breakWaves.getActiveWaves()) {
                 for (int ring = 0; ring < ringCount; ring++) {
-                    float ageF = wave.age - ring * 2.5f;
+                    float ageF = (now - wave.born) + partialTick - ring * 2.5f;
                     if (ageF < 0 || ageF > maxAge) continue;
                     float t = ageF / maxAge;
-                    float fade = (1.0f - t) * (1.0f - t); // ease-out fade
+                    float fade = (1.0f - t) * (1.0f - t);
                     int baseA = (baseColor >>> 24) & 0xFF;
                     int a = Math.max(18, (int) (baseA * fade));
                     int rgb = baseColor & 0x00FFFFFF;
-                    // Slight hue shift toward white as it expands
                     int faded = (a << 24) | rgb;
                     double radius = 0.2 + ageF * 0.32;
                     double yOff = ring * 0.04;
-                    // Double ring (two heights) for hologram thickness
                     ring(builder, pose, wave.x, wave.y + yOff, wave.z, radius, 28, faded);
                     ring(builder, pose, wave.x, wave.y + yOff + 0.06, wave.z, radius * 0.92, 20, faded);
                 }
