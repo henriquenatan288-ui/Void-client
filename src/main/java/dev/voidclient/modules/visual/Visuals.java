@@ -203,9 +203,10 @@ public class Visuals extends Module {
                 case FOOT -> {
                     double px = -e.dz() * (e.left() ? -0.12 : 0.12), pz = e.dx() * (e.left() ? -0.12 : 0.12);
                     double fa = Math.clamp((1 - t) * 1.5, 0, 1) * alpha * 0.7;
-                    sink.line(new Vec3(e.x() + px - e.dx() * 0.14, e.y() + 0.02, e.z() + pz - e.dz() * 0.14),
+                    neonLine(sink,
+                            new Vec3(e.x() + px - e.dx() * 0.14, e.y() + 0.02, e.z() + pz - e.dz() * 0.14),
                             new Vec3(e.x() + px + e.dx() * 0.14, e.y() + 0.02, e.z() + pz + e.dz() * 0.14),
-                            0.1f, false, argb(ca, fa), false);
+                            0.1f, ca, fa);
                 }
                 default -> { }
             }
