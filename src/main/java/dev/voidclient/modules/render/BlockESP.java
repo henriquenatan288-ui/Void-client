@@ -10,7 +10,9 @@ import net.minecraft.block.Block;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.network.ClientPlayerEntity;
+import net.minecraft.client.world.ClientWorld;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Direction;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -40,6 +42,10 @@ public class BlockESP extends Module {
             new ColorSetting("Color", "ESP box and tracer color", 0xFFAA00FF));
     private final BooleanSetting tracers = addSetting(
             new BooleanSetting("Tracers", "Draw a line from the camera to selected blocks", true));
+    private final BooleanSetting exposedOnly = addSetting(
+            new BooleanSetting("Exposed only",
+                    "Only show selected blocks touching air or fluid; filters some Anti-Xray decoys but cannot reveal hidden ores.",
+                    false));
 
     private final List<BlockPos> found = new ArrayList<>(MAX_STORED_BLOCKS);
     private final PriorityQueue<ScanHit> nearest = new PriorityQueue<>(
@@ -52,6 +58,7 @@ public class BlockESP extends Module {
     private int scanXCursor;
     private int scanRange = -1;
     private String scanSelection = "";
+    private boolean scanExposedOnly;
     private int scanDelay;
     private BlockPos scanOrigin;
 
@@ -97,9 +104,13 @@ public class BlockESP extends Module {
 
         int radius = range.getInt();
         String selected = blocks.get();
-        if (radius != scanRange || !selected.equals(scanSelection)) {
+        boolean onlyExposed = exposedOnly.get();
+        if (radius != scanRange || !selected.equals(scanSelection)
+                || onlyExposed != scanExposedOnly) {
             scanRange = radius;
             scanSelection = selected;
+            scanExposedOnly = onlyExposed;
+            found.clear();
             scanCursor = 0;
             scanRows = List.of();
             scanRowCursor = 0;
@@ -163,7 +174,8 @@ public class BlockESP extends Module {
                     scanOrigin.getY() + row.y(),
                     scanOrigin.getZ() + row.z());
             Block block = mc.world.getBlockState(scanMutable).getBlock();
-            if (scanSelectedBlocks.contains(block)) {
+            if (scanSelectedBlocks.contains(block)
+                    && (!scanExposedOnly || isExposed(mc.world, scanMutable))) {
                 double distanceSquared = squaredDistance(scanMutable, scanOrigin);
                 if (nearest.size() < MAX_STORED_BLOCKS) {
                     nearest.add(new ScanHit(scanMutable.toImmutable(), distanceSquared));
@@ -194,6 +206,20 @@ public class BlockESP extends Module {
             scanXCursor = 0;
             scanDelay = RESCAN_DELAY_TICKS;
         }
+    }
+
+    /**
+     * True only when the selected block has a loaded neighbor that is air or contains fluid.
+     * Unloaded chunks never count as air, which avoids treating missing data as exposure.
+     */
+    private static boolean isExposed(ClientWorld world, BlockPos pos) {
+        for (Direction direction : Direction.values()) {
+            BlockPos neighbor = pos.offset(direction);
+            if (!world.isChunkLoaded(neighbor.getX() >> 4, neighbor.getZ() >> 4)) continue;
+            var neighborState = world.getBlockState(neighbor);
+            if (neighborState.isAir() || !neighborState.getFluidState().isEmpty()) return true;
+        }
+        return false;
     }
 
     private static List<ScanRow> buildScanRows(int radius) {
@@ -232,7 +258,8 @@ public class BlockESP extends Module {
         MinecraftClient mc = MinecraftClient.getInstance();
         if (mc.textRenderer == null) return;
         ctx.drawText(mc.textRenderer,
-                "BlockESP: " + found.size() + " found / " + blocks.getSelectedIds().size() + " selected",
+                "BlockESP: " + found.size() + " found / " + blocks.getSelectedIds().size() + " selected"
+                        + (exposedOnly.get() ? " / exposed only" : ""),
                 4, 40, color.get(), true);
     }
 }
