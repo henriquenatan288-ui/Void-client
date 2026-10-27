@@ -11,10 +11,11 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
 
-/** Visual heavy-hit effect plus a slower local hand-swing animation. */
 public class SlowHit extends Module {
     private final BooleanSetting critFx = addSetting(
             new BooleanSetting("Crit FX", "Extra crit particles on attack", true));
+    private final BooleanSetting enchantedLook = addSetting(
+            new BooleanSetting("Enchanted look", "Glint on held tool (client visual)", true));
     private final NumberSetting swingDuration = addSetting(
             new NumberSetting("Swing duration", "Ticks per visible arm swing", 14, 6, 30, 1));
 
@@ -26,6 +27,10 @@ public class SlowHit extends Module {
 
     public int getVisualSwingDuration() {
         return swingDuration.getInt();
+    }
+
+    public boolean enchantedLook() {
+        return enchantedLook.get();
     }
 
     @Override
