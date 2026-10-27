@@ -367,8 +367,7 @@ public class Visuals extends Module {
                           int rgb, double alpha) {
         if (alpha <= 0.001) return;
         if (neonGlow.get()) {
-            sink.line(a, b, width * 2.0f, false, argb(rgb, alpha * 0.10), false);
-            sink.line(a, b, width * 1.28f, false, argb(rgb, alpha * 0.25), false);
+            sink.line(a, b, width * 1.8f, false, argb(rgb, alpha * 0.18), false);
         }
         sink.line(a, b, width, false, argb(rgb, alpha), false);
     }
