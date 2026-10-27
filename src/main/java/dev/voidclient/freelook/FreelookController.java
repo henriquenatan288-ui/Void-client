@@ -5,28 +5,26 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.util.Mth;
 
-/**
- * Independent camera yaw/pitch. Player body keeps its own facing.
- * Does not mutate player state. Freecam has priority when both would be active.
- */
 public final class FreelookController {
     private FreelookController() {}
 
     public static float sensitivity = 0.15f;
-
-    /** Fired when freelook stops itself (death, world change). */
+    /** When true, camera ignores wall collision in 3rd person (looks through blocks). */
+    public static boolean passThrough = false;
     public static Runnable onAutoStop = () -> {};
 
     private static boolean active;
     private static LocalPlayer owner;
     private static float yaw, pitch;
-
-    /** Locked body rotation so mobile touch that writes onto the player can be redirected. */
     private static float lockedYaw, lockedPitch;
     private static boolean bodyLocked;
 
     public static boolean isActive() {
         return active && !FreecamController.isActive();
+    }
+
+    public static boolean shouldPassThrough() {
+        return isActive() && passThrough;
     }
 
     public static float yaw() { return yaw; }
@@ -69,7 +67,6 @@ public final class FreelookController {
         pitch = Mth.clamp(pitch + (float) dy * sensitivity, -90f, 90f);
     }
 
-    /** Mobile path: touch may write rotation onto the player instead of Entity.turn. */
     public static void captureTouchLook(LocalPlayer p) {
         if (!isActive() || p == null || !bodyLocked) return;
         float py = p.getYRot();
