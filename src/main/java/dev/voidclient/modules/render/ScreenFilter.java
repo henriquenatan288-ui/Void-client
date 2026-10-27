@@ -33,7 +33,8 @@ public class ScreenFilter extends Module {
         };
     }
 
-    public void renderHud(GuiGraphicsExtractor ctx, float tickDelta) {
+    @Override
+    public void onRender2D(GuiGraphicsExtractor ctx, float tickDelta) {
         Minecraft mc = Minecraft.getInstance();
         if (mc == null || ctx == null) return;
         int w, h;

@@ -3,6 +3,7 @@ package dev.voidclient.core;
 import dev.voidclient.core.setting.Setting;
 import java.util.ArrayList;
 import java.util.List;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 
 /** Base class for every module. */
 public abstract class Module {
@@ -68,5 +69,10 @@ public abstract class Module {
     protected void onEnable() {}
     protected void onDisable() {}
     public void onTick() {}
-    public void onRender2D(float tickDelta) {}
+
+    /**
+     * HUD / 2D overlay. Called every frame for enabled modules.
+     * Prefer this over ad-hoc render/renderHud methods.
+     */
+    public void onRender2D(GuiGraphicsExtractor context, float tickDelta) {}
 }

@@ -24,7 +24,8 @@ public class Watermark extends Module {
         setEnabled(true);
     }
 
-    public void render(GuiGraphicsExtractor ctx, float tickDelta) {
+    @Override
+    public void onRender2D(GuiGraphicsExtractor ctx, float tickDelta) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.font == null) return;
 

@@ -158,15 +158,10 @@ public class ModuleManager {
         for (Module module : modules) {
             if (!module.isEnabled()) continue;
             try {
-                if (module instanceof FPS fps) fps.render(event.getContext(), event.getTickDelta());
-                else if (module instanceof ArrayListHud array) array.render(event.getContext(), event.getTickDelta());
-                else if (module instanceof Watermark watermark) watermark.render(event.getContext(), event.getTickDelta());
-                else if (module instanceof BlockESP blockEsp) blockEsp.renderHud(event.getContext(), event.getTickDelta());
-                else if (module instanceof PlayerESP playerEsp) playerEsp.renderHud(event.getContext(), event.getTickDelta());
-                else if (module instanceof ScreenFilter sf) sf.renderHud(event.getContext(), event.getTickDelta());
-                else if (module instanceof AntVanish av) av.renderHud(event.getContext(), event.getTickDelta());
-                else module.onRender2D(event.getTickDelta());
-            } catch (Exception error) { logFailure(module, error); }
+                module.onRender2D(event.getContext(), event.getTickDelta());
+            } catch (Exception error) {
+                logFailure(module, error);
+            }
         }
     }
 

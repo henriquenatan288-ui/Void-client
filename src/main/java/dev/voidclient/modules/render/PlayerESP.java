@@ -56,7 +56,8 @@ public class PlayerESP extends Module {
         return mc.player.distanceToSqr(other) <= max * max;
     }
 
-    public void renderHud(GuiGraphicsExtractor ctx, float tickDelta) {
+    @Override
+    public void onRender2D(GuiGraphicsExtractor ctx, float tickDelta) {
         if (!nametags.get()) return;
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.font == null) return;

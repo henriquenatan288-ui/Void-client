@@ -21,7 +21,8 @@ public class FPS extends Module {
         super("FPS", "Shows current frames per second.", Category.HUD);
     }
 
-    public void render(GuiGraphicsExtractor context, float tickDelta) {
+    @Override
+    public void onRender2D(GuiGraphicsExtractor context, float tickDelta) {
         Minecraft mc = Minecraft.getInstance();
         if (mc == null || mc.font == null || context == null) return;
 

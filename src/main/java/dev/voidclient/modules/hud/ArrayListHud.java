@@ -38,7 +38,8 @@ public class ArrayListHud extends Module {
         cachedRenderer = renderer;
     }
 
-    public void render(GuiGraphicsExtractor ctx, float tickDelta) {
+    @Override
+    public void onRender2D(GuiGraphicsExtractor ctx, float tickDelta) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.font == null || VoidClient.MODULE_MANAGER == null) return;
         if (cachedRevision != Module.getStateRevision() || cachedRenderer != mc.font) {

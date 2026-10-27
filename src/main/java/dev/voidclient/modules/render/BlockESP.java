@@ -254,7 +254,8 @@ public class BlockESP extends Module {
     public int getEspColor() { return color.get(); }
     public boolean shouldDrawTracers() { return tracers.get(); }
 
-    public void renderHud(GuiGraphicsExtractor ctx, float tickDelta) {
+    @Override
+    public void onRender2D(GuiGraphicsExtractor ctx, float tickDelta) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.font == null) return;
         ctx.text(mc.font,
