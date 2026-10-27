@@ -7,8 +7,6 @@ import dev.voidclient.core.event.events.KeyEvent;
 import dev.voidclient.core.event.events.Render2DEvent;
 import dev.voidclient.core.event.events.TickEvent;
 import dev.voidclient.gui.ClickGuiScreen;
-import dev.voidclient.modules.render.VoidRenderLayers;
-import dev.voidclient.modules.render.VoidWorldRenderer;
 import dev.voidclient.render.EspExtractors;
 import dev.voidclient.render.VoidDraw;
 import net.fabricmc.api.ClientModInitializer;
@@ -16,7 +14,6 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.hud.HudElementRegistry;
-import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
 import net.minecraft.client.KeyMapping;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.Minecraft;
@@ -42,9 +39,8 @@ public class VoidClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
         LOGGER.info("{} {} initializing...", NAME, VERSION);
-        VoidRenderLayers.bootstrap();
 
-        // Ribbon path (mobile-safe quads) + classic lines path (fallback redundancy)
+        // Single world-render path: ESP modules feed VoidDraw and are submitted once.
         VoidDraw.init();
         EspExtractors.register();
 
@@ -77,9 +73,6 @@ public class VoidClient implements ClientModInitializer {
                 toggleClickGui(client);
             }
         });
-
-        // Proven lines ESP path (setNormal + setLineWidth)
-        LevelRenderEvents.AFTER_SOLID_FEATURES.register(VoidWorldRenderer::render);
 
         HudElementRegistry.addLast(Identifier.fromNamespaceAndPath(MOD_ID, "hud"), (drawContext, tickCounter) -> {
             float tickDelta = tickCounter.getGameTimeDeltaPartialTick(false);

@@ -1,7 +1,7 @@
 package dev.voidclient.render;
 
-import com.mojang.blaze3d.PrimitiveTopology;
 import com.mojang.blaze3d.buffers.GpuBufferSlice;
+import com.mojang.blaze3d.PrimitiveTopology;
 import com.mojang.blaze3d.pipeline.RenderPipeline;
 import com.mojang.blaze3d.pipeline.RenderTarget;
 import com.mojang.blaze3d.systems.RenderPass;
@@ -10,8 +10,6 @@ import com.mojang.blaze3d.textures.GpuTextureView;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.blaze3d.vertex.VertexFormat;
-import dev.voidclient.freecam.FreecamController;
-import dev.voidclient.freelook.FreelookController;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -22,8 +20,10 @@ import net.fabricmc.fabric.api.client.rendering.v1.level.LevelExtractionContext;
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelExtractionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext;
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
+import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.util.Mth;
 import net.minecraft.client.renderer.StagedVertexBuffer;
 import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.resources.Identifier;
@@ -45,7 +45,7 @@ public final class VoidDraw {
     private static final Logger LOG = LoggerFactory.getLogger("VoidClient/Draw");
 
     public interface Extractor {
-        void extract(Sink sink, Minecraft mc);
+        void extract(Sink sink, Minecraft mc, float partialTick);
     }
 
     public interface Sink {
@@ -63,7 +63,9 @@ public final class VoidDraw {
     private record Frame(List<Shape> shapes, Vec3 forward) {}
 
     private static volatile Frame frame = new Frame(List.of(), new Vec3(0, 0, 1));
-    private static volatile boolean broken;
+    private static volatile boolean loggedMissingFormat;
+    private static volatile boolean loggedDrawFailure;
+    private static volatile boolean closed;
 
     private static final RenderPipeline XRAY = RenderPipelines.register(
             RenderPipeline.builder(RenderPipelines.DEBUG_FILLED_SNIPPET)
@@ -84,17 +86,20 @@ public final class VoidDraw {
     public static void init() {
         LevelExtractionEvents.END_EXTRACTION.register(VoidDraw::extractAll);
         LevelRenderEvents.AFTER_TRANSLUCENT_TERRAIN.register(VoidDraw::draw);
-        ClientLifecycleEvents.CLIENT_STOPPING.register(c -> BUF.close());
+        ClientLifecycleEvents.CLIENT_STOPPING.register(c -> close());
         LOG.info("VoidDraw initialized (ribbon/quad path)");
     }
 
     private static void extractAll(LevelExtractionContext ctx) {
-        if (broken) return;
+        if (closed) return;
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.level == null) {
             frame = new Frame(List.of(), new Vec3(0, 0, 1));
             return;
         }
+
+        float partialTick = Mth.clamp(
+                ctx.deltaTracker().getGameTimeDeltaPartialTick(false), 0.0f, 1.0f);
 
         List<Shape> out = new ArrayList<>();
         Sink sink = new Sink() {
@@ -115,41 +120,34 @@ public final class VoidDraw {
         };
         for (Extractor e : EXTRACTORS) {
             try {
-                e.extract(sink, mc);
+                e.extract(sink, mc, partialTick);
             } catch (Throwable t) {
                 LOG.error("Extractor failed", t);
             }
         }
-        frame = new Frame(List.copyOf(out), cameraForward(mc));
+        frame = new Frame(List.copyOf(out), cameraForward(ctx.camera()));
     }
 
-    private static Vec3 cameraForward(Minecraft mc) {
-        float yaw;
-        float pitch;
-        if (FreecamController.isActive()) {
-            yaw = FreecamController.yaw();
-            pitch = FreecamController.pitch();
-        } else if (FreelookController.isActive()) {
-            yaw = FreelookController.yaw();
-            pitch = FreelookController.pitch();
-        } else {
-            float pt = mc.getDeltaTracker().getGameTimeDeltaPartialTick(false);
-            yaw = mc.player.getViewYRot(pt);
-            pitch = mc.player.getViewXRot(pt);
-        }
-        double yr = Math.toRadians(yaw);
-        double pr = Math.toRadians(pitch);
-        return new Vec3(-Math.sin(yr) * Math.cos(pr), -Math.sin(pr), Math.cos(yr) * Math.cos(pr));
+    private static Vec3 cameraForward(Camera camera) {
+        // Use the actual interpolated camera direction for this extraction frame.
+        // This stays aligned with the renderer camera in normal view, freecam, and freelook.
+        var forward = camera.forwardVector();
+        return new Vec3(forward.x(), forward.y(), forward.z());
     }
 
     private static void draw(LevelRenderContext ctx) {
         Frame f = frame;
-        if (broken || f.shapes().isEmpty()) return;
+        if (closed || f.shapes().isEmpty()) return;
         try {
             drawFrame(ctx, f);
+            loggedDrawFailure = false;
         } catch (Throwable t) {
-            broken = true;
-            LOG.error("VoidDraw disabled after draw failure (mobile renderer?)", t);
+            // Do not permanently disable world rendering after a transient GPU/API failure.
+            // Log once until a frame renders successfully, avoiding per-frame log spam.
+            if (!loggedDrawFailure) {
+                LOG.error("VoidDraw render failed; will retry on the next frame", t);
+            }
+            loggedDrawFailure = true;
         }
     }
 
@@ -157,44 +155,62 @@ public final class VoidDraw {
         Minecraft mc = Minecraft.getInstance();
         VertexFormat fmt = XRAY.getVertexFormatBinding(0);
         if (fmt == null) {
-            if (!broken) {
-                broken = true;
+            if (!loggedMissingFormat) {
                 LOG.error("VoidDraw: no vertex format on DEBUG_FILLED pipeline");
+                loggedMissingFormat = true;
             }
             return;
         }
+        loggedMissingFormat = false;
         PrimitiveTopology topo = XRAY.getPrimitiveTopology();
         var sorting = topo == PrimitiveTopology.QUADS ? RenderSystem.getProjectionType().vertexSorting() : null;
 
-        StagedVertexBuffer.Draw dX = BUF.appendDraw(fmt, topo, sorting);
-        StagedVertexBuffer.Draw dD = BUF.appendDraw(fmt, topo, sorting);
-        VertexConsumer vX = BUF.getVertexBuilder(dX);
-        VertexConsumer vD = BUF.getVertexBuilder(dD);
-
+        boolean frameStarted = false;
         PoseStack pose = ctx.poseStack();
-        Vec3 cam = ctx.levelState().cameraRenderState.pos;
-        pose.pushPose();
-        pose.translate(-cam.x, -cam.y, -cam.z);
-        Matrix4fc m = pose.last().pose();
+        boolean posePushed = false;
+        try {
+            StagedVertexBuffer.Draw dX = BUF.appendDraw(fmt, topo, sorting);
+            frameStarted = true;
+            StagedVertexBuffer.Draw dD = BUF.appendDraw(fmt, topo, sorting);
+            VertexConsumer vX = BUF.getVertexBuilder(dX);
+            VertexConsumer vD = BUF.getVertexBuilder(dD);
 
-        Vec3 origin = cam.add(f.forward());
-        for (Shape s : f.shapes()) {
-            if (s instanceof Seg g) {
-                ribbon(m, g.xray() ? vX : vD, g.a(), g.b(), cam, g.width(), g.screenScale(), g.argb());
-            } else if (s instanceof Tr t) {
-                ribbon(m, vX, origin, t.target(), cam, t.width(), true, t.argb());
-            } else if (s instanceof Fill b) {
-                box(m, b.xray() ? vX : vD, b);
+            Vec3 cam = ctx.levelState().cameraRenderState.pos;
+            pose.pushPose();
+            posePushed = true;
+            pose.translate(-cam.x, -cam.y, -cam.z);
+            Matrix4fc m = pose.last().pose();
+
+            Vec3 origin = cam.add(f.forward());
+            for (Shape s : f.shapes()) {
+                if (s instanceof Seg g) {
+                    ribbon(m, g.xray() ? vX : vD, g.a(), g.b(), cam, g.width(), g.screenScale(), g.argb());
+                } else if (s instanceof Tr t) {
+                    ribbon(m, vX, origin, t.target(), cam, t.width(), true, t.argb());
+                } else if (s instanceof Fill b) {
+                    box(m, b.xray() ? vX : vD, b);
+                }
+            }
+
+            pose.popPose();
+            posePushed = false;
+
+            BUF.upload();
+            StagedVertexBuffer.ExecuteInfo iX = BUF.getExecuteInfo(dX);
+            StagedVertexBuffer.ExecuteInfo iD = BUF.getExecuteInfo(dD);
+            // Draw depth-tested geometry first so X-ray overlays remain visible on top.
+            if (iD != null) execute(mc, iD, DEPTH);
+            if (iX != null) execute(mc, iX, XRAY);
+        } finally {
+            // Restore the extraction/render context even if vertex generation or upload fails.
+            try {
+                if (posePushed) pose.popPose();
+            } finally {
+                // StagedVertexBuffer must finish every frame that successfully started,
+                // including partially generated frames that fail before upload/submission.
+                if (frameStarted) BUF.endFrame();
             }
         }
-        pose.popPose();
-
-        BUF.upload();
-        StagedVertexBuffer.ExecuteInfo iX = BUF.getExecuteInfo(dX);
-        StagedVertexBuffer.ExecuteInfo iD = BUF.getExecuteInfo(dD);
-        if (iX != null) execute(mc, iX, XRAY);
-        if (iD != null) execute(mc, iD, DEPTH);
-        BUF.endFrame();
     }
 
     private static void ribbon(Matrix4fc m, VertexConsumer vb, Vec3 a, Vec3 b, Vec3 cam,
@@ -245,6 +261,13 @@ public final class VoidDraw {
             quad(m, vb, q[0], q[1], q[2], q[3], r, g, bl, al);
             quad(m, vb, q[3], q[2], q[1], q[0], r, g, bl, al);
         }
+    }
+
+    public static void close() {
+        if (closed) return;
+        closed = true;
+        frame = new Frame(List.of(), new Vec3(0, 0, 1));
+        BUF.close();
     }
 
     private static void execute(Minecraft mc, StagedVertexBuffer.ExecuteInfo info, RenderPipeline pipeline) {

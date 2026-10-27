@@ -47,12 +47,22 @@ public class Tracers extends Module {
     public int getTracerColor() { return color.get(); }
 
     public int getTracerColor(AbstractClientPlayer target) {
-        int base = color.get();
         Minecraft mc = Minecraft.getInstance();
-        if (!distanceColors.isEnabled() || mc.player == null || target == null) return base;
+        if (!distanceColors.isEnabled() || mc.player == null || target == null) {
+            return color.get();
+        }
+        return getTracerColor(target, Math.sqrt(mc.player.distanceToSqr(target)));
+    }
+
+    /**
+     * Distance-color variant for renderers that already have interpolated coordinates.
+     * This keeps the line's color in sync with the target position used for the same frame.
+     */
+    public int getTracerColor(AbstractClientPlayer target, double distance) {
+        int base = color.get();
+        if (!distanceColors.isEnabled() || target == null || !Double.isFinite(distance)) return base;
 
         double maxDistance = Math.max(1.0, range.get());
-        double distance = Math.sqrt(mc.player.distanceToSqr(target));
         double blend = Math.max(0.0, Math.min(1.0, distance / maxDistance));
 
         int alpha = (base >>> 24) & 0xFF;

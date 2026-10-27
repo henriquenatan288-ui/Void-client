@@ -16,7 +16,7 @@ import net.minecraft.core.Direction;
 
 /**
  * Expanding hologram waves when a tracked block breaks (survival continuous + creative).
- * Drawn in VoidWorldRenderer (no-depth lines).
+ * Drawn by the single VoidDraw extraction/render pipeline.
  */
 public class BreakWaves extends Module {
     private final NumberSetting waves = addSetting(
