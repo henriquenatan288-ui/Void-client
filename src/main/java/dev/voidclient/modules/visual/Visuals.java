@@ -299,7 +299,7 @@ public class Visuals extends Module {
                 mc.getWindow().getGuiScaledHeight(), color);
     }
 
-    private static void ring(VoidDraw.Sink s, double cx, double cy, double cz, double r, double w,
+    private void ring(VoidDraw.Sink s, double cx, double cy, double cz, double r, double w,
                              int seg, double spin, int ca, int cb, double alpha) {
         Vec3 prev = null;
         for (int i = 0; i <= seg; i++) {
@@ -311,7 +311,7 @@ public class Visuals extends Module {
         }
     }
 
-    private static void hat(VoidDraw.Sink s, double x, double y, double z, double sec, int ca, int cb, double alpha) {
+    private void hat(VoidDraw.Sink s, double x, double y, double z, double sec, int ca, int cb, double alpha) {
         double r = 0.55, hh = 0.3;
         Vec3 apex = new Vec3(x, y + hh, z);
         int spokes = 20;
@@ -325,7 +325,7 @@ public class Visuals extends Module {
     }
 
     /** Asas no espaço do mundo: base nas costas, penas em leque; yaw em graus (convenção Minecraft). */
-    private static void wings(VoidDraw.Sink s, double x, double y, double z, float yawDeg, double sec,
+    private void wings(VoidDraw.Sink s, double x, double y, double z, float yawDeg, double sec,
                               int ca, int cb, double alpha) {
         double yaw = Math.toRadians(yawDeg);
         double bx = Math.sin(yaw), bz = -Math.cos(yaw);        // "atrás"
@@ -347,7 +347,7 @@ public class Visuals extends Module {
         }
     }
 
-    private static void trail(VoidDraw.Sink s, PState st, long gt, int ca, int cb, double alpha) {
+    private void trail(VoidDraw.Sink s, PState st, long gt, int ca, int cb, double alpha) {
         double[] prev = null;
         for (double[] p : st.trail) {
             double age = gt - p[3];
