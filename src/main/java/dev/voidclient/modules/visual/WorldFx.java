@@ -170,8 +170,7 @@ public class WorldFx extends Module {
             Vec3 b = new Vec3(px - wx * len, py - Math.sin(q) * 0.08, pz - wz * len);
             int rgb = Visuals.mix(0x31F5FF, 0x8B5CFF, 0.5 + 0.5 * Math.sin(q));
             if (neon.get()) {
-                sink.line(a, b, 0.075f, false, Visuals.argb(rgb, alpha * 0.16), false);
-                sink.line(a, b, 0.04f, false, Visuals.argb(rgb, alpha * 0.34), false);
+                sink.line(a, b, 0.055f, false, Visuals.argb(rgb, alpha * 0.22), false);
             }
             sink.line(a, b, 0.012f, false, Visuals.argb(rgb, alpha), false);
         }
@@ -181,8 +180,7 @@ public class WorldFx extends Module {
                               double size, int rgb, double alpha) {
         if (neon.get()) {
             // Layered, low-alpha quads create a translucent neon halo.
-            cube(sink, x, y, z, size * 3.2, Visuals.argb(rgb, alpha * 0.09));
-            cube(sink, x, y, z, size * 2.0, Visuals.argb(rgb, alpha * 0.18));
+            cube(sink, x, y, z, size * 2.8, Visuals.argb(rgb, alpha * 0.15));
         }
         cube(sink, x, y, z, size, Visuals.argb(rgb, alpha * 0.9));
     }
