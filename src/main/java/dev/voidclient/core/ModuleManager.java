@@ -32,6 +32,7 @@ import dev.voidclient.modules.render.Freelook;
 import dev.voidclient.modules.render.Fullbright;
 import dev.voidclient.modules.render.Particles;
 import dev.voidclient.modules.render.PlayerESP;
+import dev.voidclient.modules.render.ScreenFilter;
 import dev.voidclient.modules.render.Tracers;
 import dev.voidclient.modules.utility.AutoEat;
 import dev.voidclient.modules.utility.AutoRespawn;
@@ -78,6 +79,7 @@ public class ModuleManager {
         register(new Fullbright());
         register(new Visuals());
         register(new WorldFx());
+        register(new ScreenFilter());
 
         register(new AutoSprint());
         register(new AutoRespawn());
@@ -149,6 +151,7 @@ public class ModuleManager {
                 else if (module instanceof Watermark watermark) watermark.render(event.getContext(), event.getTickDelta());
                 else if (module instanceof BlockESP blockEsp) blockEsp.renderHud(event.getContext(), event.getTickDelta());
                 else if (module instanceof PlayerESP playerEsp) playerEsp.renderHud(event.getContext(), event.getTickDelta());
+                else if (module instanceof ScreenFilter sf) sf.renderHud(event.getContext(), event.getTickDelta());
                 else module.onRender2D(event.getTickDelta());
             } catch (Exception error) { logFailure(module, error); }
         }
