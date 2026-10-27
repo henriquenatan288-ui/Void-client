@@ -222,7 +222,17 @@ public final class VoidDraw {
         Vec3 toCam = cam.subtract(mid);
         Vec3 side = d.cross(toCam);
         double sl = side.length();
-        if (sl < 1.0e-4 * len) return;
+        if (sl < 1.0e-4 * len) {
+            // A tracer aimed almost exactly along the camera view has a near-zero
+            // cross product. Use a stable world-up fallback so the ribbon remains visible.
+            Vec3 direction = d.scale(1.0 / len);
+            Vec3 reference = Math.abs(direction.y) < 0.95
+                    ? new Vec3(0.0, 1.0, 0.0)
+                    : new Vec3(1.0, 0.0, 0.0);
+            side = d.cross(reference);
+            sl = side.length();
+            if (sl < 1.0e-8) return;
+        }
         double w = screenScale ? width * 0.002 * Math.max(1.0, toCam.length()) : width;
         side = side.scale(w * 0.5 / sl);
 

@@ -123,10 +123,10 @@ public final class ModuleSettingsScreen extends Screen {
         }
 
         int bx = x + w - 10;
-        RenderUtils.fillRounded(ctx, bx - 5, top + 2, 3, Math.max(8, listHeight() - 4),
-                2, 0x66000000);
+        RenderUtils.fillRounded(ctx, bx - 6, top + 2, 4, Math.max(8, listHeight() - 4),
+                2, 0x88000000);
         if (maxScroll() > 0) {
-            RenderUtils.fillRounded(ctx, bx - 5, thumbY(), 3, thumbHeight(), 2, Theme.ACCENT());
+            RenderUtils.fillRounded(ctx, bx - 6, thumbY(), 4, thumbHeight(), 2, Theme.ACCENT());
         }
 
         int footerY = y + h - FOOTER_H + 5;
@@ -166,7 +166,8 @@ public final class ModuleSettingsScreen extends Screen {
             RenderUtils.fillRounded(ctx, barX, barY, Math.max(3, (int) (barW * pct)),
                     4, 2, Theme.SLIDER_FILL());
         } else if (setting instanceof ModeSetting mode) {
-            String value = mode.get();
+            String value = mode.get() + "  "
+                    + (mode.getModes().indexOf(mode.get()) + 1) + "/" + mode.getModes().size();
             int valueWidth = RenderUtils.textWidth(font, value);
             RenderUtils.fillRounded(ctx, right - valueWidth - 14, y + 4,
                     valueWidth + 10, 18, 4, Theme.BG_SELECTED());

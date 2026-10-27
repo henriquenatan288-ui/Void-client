@@ -34,6 +34,7 @@ import dev.voidclient.modules.render.Particles;
 import dev.voidclient.modules.render.PlayerESP;
 import dev.voidclient.modules.render.Tracers;
 import dev.voidclient.modules.visual.Visuals;
+import dev.voidclient.modules.visual.SkyChanger;
 import dev.voidclient.modules.visual.WorldFx;
 import dev.voidclient.modules.utility.AutoEat;
 import dev.voidclient.modules.utility.AutoRespawn;
@@ -80,6 +81,7 @@ public class ModuleManager {
         register(new BreakWaves());
         register(new Fullbright());
         register(new Visuals());
+        register(new SkyChanger());
         register(new WorldFx());
 
         // Utility

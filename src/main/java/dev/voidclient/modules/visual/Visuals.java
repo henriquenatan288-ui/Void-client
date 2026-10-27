@@ -46,12 +46,6 @@ public class Visuals extends Module {
 
     private final BooleanSetting neonGlow = addSetting(
             new BooleanSetting("Neon glow", "Soft translucent glow around visual effects", true));
-    private final BooleanSetting customSky = addSetting(
-            new BooleanSetting("Custom sky", "Add a subtle neon starfield to the sky", false));
-    private final ModeSetting skyStyle = addSetting(new ModeSetting(
-            "Sky style", "Custom sky appearance", "Nebula", "Nebula", "Aurora", "Starfield"));
-    private final NumberSetting skyIntensity = addSetting(
-            new NumberSetting("Sky intensity", "Strength of sky effects", 0.7, 0.2, 1.0, 0.05));
     private final BooleanSetting screenFilter = addSetting(
             new BooleanSetting("Screen filter", "Apply a subtle color grade while playing", false));
     private final ModeSetting filterStyle = addSetting(new ModeSetting(
@@ -161,7 +155,6 @@ public class Visuals extends Module {
         int ca = rainbow.get() ? hsv(sec * 0.2) : (colorA.get() & 0xFFFFFF);
         int cb = rainbow.get() ? hsv(sec * 0.2 + 0.5) : (colorB.get() & 0xFFFFFF);
         Vec3 cam = mc.gameRenderer.mainCamera().position();
-        if (customSky.get()) drawCustomSky(sink, cam, sec);
 
         for (AbstractClientPlayer p : mc.level.players()) {
             boolean local = p == mc.player;
@@ -214,74 +207,6 @@ public class Visuals extends Module {
     }
 
     // ------------------------------------------------------------------ formas
-    /**
-     * Draws a subtle camera-relative starfield. Depth-tested world geometry makes
-     * terrain naturally occlude stars, so it decorates the sky instead of the HUD.
-     */
-    private void drawCustomSky(VoidDraw.Sink sink, Vec3 cam, double sec) {
-        int starCount = skyStyle.is("Starfield") ? 72 : 48;
-        for (int i = 0; i < starCount; i++) {
-            double azimuth = h(i, 0) * Math.PI * 2.0;
-            double elevation = 0.08 + h(i, 1) * 0.88;
-            double horizontal = Math.sqrt(Math.max(0.0, 1.0 - elevation * elevation));
-            double distance = 78.0 + h(i, 2) * 16.0;
-            double x = cam.x + Math.cos(azimuth) * horizontal * distance;
-            double y = cam.y + elevation * distance;
-            double z = cam.z + Math.sin(azimuth) * horizontal * distance;
-            double pulse = 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(sec * (0.7 + h(i, 4)) + h(i, 5) * 6.28));
-            int rgb = skyColor(i);
-            double s = 0.045 + h(i, 6) * 0.07;
-            sink.box(x - s, y - s, z - s, x + s, y + s, z + s,
-                    argb(rgb, skyIntensity.get() * pulse * 0.72), false);
-            if (i % 12 == 0) {
-                Vec3 a = new Vec3(x - s * 2.2, y, z);
-                Vec3 b = new Vec3(x + s * 2.2, y, z);
-                neonLine(sink, a, b, 0.009f, rgb, skyIntensity.get() * pulse * 0.42);
-                neonLine(sink, new Vec3(x, y - s * 2.2, z),
-                        new Vec3(x, y + s * 2.2, z), 0.009f, rgb,
-                        skyIntensity.get() * pulse * 0.42);
-            }
-        }
-
-        if (skyStyle.is("Nebula")) {
-            ring(sink, cam.x, cam.y + 25.0, cam.z, 72.0, 0.018, 56,
-                    sec * 0.018, 0x32E9FF, 0x9B54FF, skyIntensity.get() * 0.16);
-            ring(sink, cam.x, cam.y + 32.0, cam.z, 88.0, 0.014, 56,
-                    -sec * 0.012, 0x8A4DFF, 0x48F6B8, skyIntensity.get() * 0.10);
-        } else if (skyStyle.is("Aurora")) {
-            for (int band = 0; band < 3; band++) {
-                Vec3 previous = null;
-                for (int j = 0; j <= 56; j++) {
-                    double angle = j * Math.PI * 2.0 / 56.0;
-                    double radius = 64.0 + band * 8.0;
-                    double y = cam.y + 27.0 + Math.sin(angle * 2.0 + sec * 0.22 + band) * (2.0 + band);
-                    Vec3 point = new Vec3(cam.x + Math.cos(angle) * radius, y,
-                            cam.z + Math.sin(angle) * radius);
-                    if (previous != null) {
-                        int rgb = mix(0x39F2FF, 0xB24CFF, (Math.sin(angle + band) + 1.0) * 0.5);
-                        neonLine(sink, previous, point, 0.022f, rgb,
-                                skyIntensity.get() * 0.12);
-                    }
-                    previous = point;
-                }
-            }
-        }
-    }
-
-    private int skyColor(int index) {
-        if (skyStyle.is("Aurora")) return switch (index % 3) {
-            case 0 -> 0x48FFD0;
-            case 1 -> 0x48DFFF;
-            default -> 0xAD6BFF;
-        };
-        if (skyStyle.is("Starfield")) return index % 2 == 0 ? 0xC8D7FF : 0xFFFFFF;
-        return switch (index % 3) {
-            case 0 -> 0x46F1FF;
-            case 1 -> 0xA967FF;
-            default -> 0x91FFCB;
-        };
-    }
-
     /** Called by the HUD hook only while no menu is open. */
     public void renderScreenFilter(GuiGraphicsExtractor ctx) {
         if (!isEnabled() || !screenFilter.get()) return;

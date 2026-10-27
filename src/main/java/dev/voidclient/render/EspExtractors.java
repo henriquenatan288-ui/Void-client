@@ -33,7 +33,7 @@ public final class EspExtractors {
             double x1 = x0 + 1, y1 = y0 + 1, z1 = z0 + 1;
             outlineBox(sink, x0, y0, z0, x1, y1, z1, 1.5f, col);
             if (tracersOn) {
-                sink.tracer(new Vec3(x0 + 0.5, y0 + 0.5, z0 + 0.5), 0.7f, col);
+                sink.tracer(new Vec3(x0 + 0.5, y0 + 0.5, z0 + 0.5), 1.0f, col);
             }
         }
     }
@@ -69,7 +69,7 @@ public final class EspExtractors {
             double dz = z - pz;
             double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
             int col = tracers.getTracerColor(other, distance);
-            sink.tracer(new Vec3(x, y + other.getBbHeight() * 0.5, z), 0.7f, col);
+            sink.tracer(new Vec3(x, y + other.getBbHeight() * 0.5, z), 1.0f, col);
         }
     }
 
