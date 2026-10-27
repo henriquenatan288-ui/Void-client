@@ -27,6 +27,7 @@ import dev.voidclient.modules.personalization.GuiTheme;
 import dev.voidclient.modules.personalization.HudTheme;
 import dev.voidclient.modules.render.BlockESP;
 import dev.voidclient.modules.render.BreakWaves;
+import dev.voidclient.modules.render.CustomSky;
 import dev.voidclient.modules.render.Freecam;
 import dev.voidclient.modules.render.Freelook;
 import dev.voidclient.modules.render.Fullbright;
@@ -34,6 +35,7 @@ import dev.voidclient.modules.render.Particles;
 import dev.voidclient.modules.render.PlayerESP;
 import dev.voidclient.modules.render.ScreenFilter;
 import dev.voidclient.modules.render.Tracers;
+import dev.voidclient.modules.utility.AntVanish;
 import dev.voidclient.modules.utility.AutoEat;
 import dev.voidclient.modules.utility.AutoRespawn;
 import dev.voidclient.modules.utility.AutoSprint;
@@ -80,6 +82,7 @@ public class ModuleManager {
         register(new Visuals());
         register(new WorldFx());
         register(new ScreenFilter());
+        register(new CustomSky());
 
         register(new AutoSprint());
         register(new AutoRespawn());
@@ -89,6 +92,7 @@ public class ModuleManager {
         register(new ChestStealer());
         register(new InvCleaner());
         register(new Timer());
+        register(new AntVanish());
 
         register(new Derp());
         register(new NoHurtCam());
@@ -152,6 +156,7 @@ public class ModuleManager {
                 else if (module instanceof BlockESP blockEsp) blockEsp.renderHud(event.getContext(), event.getTickDelta());
                 else if (module instanceof PlayerESP playerEsp) playerEsp.renderHud(event.getContext(), event.getTickDelta());
                 else if (module instanceof ScreenFilter sf) sf.renderHud(event.getContext(), event.getTickDelta());
+                else if (module instanceof AntVanish av) av.renderHud(event.getContext(), event.getTickDelta());
                 else module.onRender2D(event.getTickDelta());
             } catch (Exception error) { logFailure(module, error); }
         }
