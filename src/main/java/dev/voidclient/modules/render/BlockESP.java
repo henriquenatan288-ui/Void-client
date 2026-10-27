@@ -77,6 +77,15 @@ public class BlockESP extends Module {
 
     @Override
     protected void onDisable() {
+        resetScan();
+    }
+
+    @Override
+    public void onWorldUnload() {
+        resetScan();
+    }
+
+    private void resetScan() {
         scanCursor = 0;
         scanRows = List.of();
         scanRowCursor = 0;
@@ -84,6 +93,10 @@ public class BlockESP extends Module {
         scanOrigin = null;
         nearest.clear();
         found.clear();
+        scanSelectedBlocks = Set.of();
+        scanRange = -1;
+        scanSelection = "";
+        scanDelay = 0;
     }
 
     @Override
@@ -207,10 +220,6 @@ public class BlockESP extends Module {
         }
     }
 
-    /**
-     * A selected block is considered exposed if a loaded neighboring position is air or fluid.
-     * Unloaded chunks are never treated as air, avoiding false exposure at chunk boundaries.
-     */
     private static boolean isExposed(ClientLevel level, BlockPos pos) {
         BlockPos.MutableBlockPos neighbor = new BlockPos.MutableBlockPos();
         for (Direction direction : Direction.values()) {
