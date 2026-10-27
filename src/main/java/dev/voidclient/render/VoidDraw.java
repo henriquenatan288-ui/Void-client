@@ -59,7 +59,10 @@ public final class VoidDraw {
     private record Frame(List<Shape> shapes) {}
 
     private static volatile Frame frame = new Frame(List.of());
-    private static volatile boolean broken;
+    /** Soft fail: skip frames after error, recover automatically (do NOT kill all visuals forever). */
+    private static int failStreak;
+    private static long lastFailLogNs;
+    private static final int MAX_FAIL_STREAK = 30;
 
     private static final RenderPipeline XRAY = RenderPipelines.register(
             RenderPipeline.builder(RenderPipelines.DEBUG_FILLED_SNIPPET)
@@ -81,11 +84,10 @@ public final class VoidDraw {
         LevelExtractionEvents.END_EXTRACTION.register(VoidDraw::extractAll);
         LevelRenderEvents.AFTER_TRANSLUCENT_TERRAIN.register(VoidDraw::draw);
         ClientLifecycleEvents.CLIENT_STOPPING.register(c -> BUF.close());
-        LOG.info("VoidDraw initialized (sticky tracers + smooth extractors)");
+        LOG.info("VoidDraw initialized (soft-fail draw, sticky tracers)");
     }
 
     private static void extractAll(LevelExtractionContext ctx) {
-        if (broken) return;
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.level == null) {
             frame = new Frame(List.of());
@@ -96,20 +98,23 @@ public final class VoidDraw {
             pt = mc.getDeltaTracker().getGameTimeDeltaPartialTick(false);
         } catch (Throwable ignored) {}
 
-        List<Shape> out = new ArrayList<>();
+        List<Shape> out = new ArrayList<>(64);
         Sink sink = new Sink() {
             @Override
             public void line(Vec3 a, Vec3 b, float w, boolean ss, int argb, boolean xray) {
+                if (out.size() > 12_000) return; // hard cap geometry this frame
                 out.add(new Seg(a, b, w, ss, argb, xray));
             }
 
             @Override
             public void box(double x0, double y0, double z0, double x1, double y1, double z1, int argb, boolean xray) {
+                if (out.size() > 12_000) return;
                 out.add(new Fill(x0, y0, z0, x1, y1, z1, argb, xray));
             }
 
             @Override
             public void tracer(Vec3 t, float w, int argb) {
+                if (out.size() > 12_000) return;
                 out.add(new Tr(t, w, argb));
             }
         };
@@ -117,7 +122,11 @@ public final class VoidDraw {
             try {
                 e.extract(sink, mc, pt);
             } catch (Throwable t) {
-                LOG.error("Extractor failed", t);
+                long now = System.nanoTime();
+                if (now - lastFailLogNs > 5_000_000_000L) {
+                    lastFailLogNs = now;
+                    LOG.error("Extractor failed (throttled)", t);
+                }
             }
         }
         frame = new Frame(List.copyOf(out));
@@ -146,12 +155,23 @@ public final class VoidDraw {
 
     private static void draw(LevelRenderContext ctx) {
         Frame f = frame;
-        if (broken || f.shapes().isEmpty()) return;
+        if (f.shapes().isEmpty()) return;
+        // Soft cooldown after repeated failures — recovers without killing the session
+        if (failStreak >= MAX_FAIL_STREAK) {
+            if ((System.nanoTime() / 1_000_000_000L) % 5 == 0) failStreak = MAX_FAIL_STREAK / 2;
+            return;
+        }
         try {
             drawFrame(ctx, f);
+            failStreak = 0;
         } catch (Throwable t) {
-            broken = true;
-            LOG.error("VoidDraw disabled after draw failure (mobile renderer?)", t);
+            failStreak++;
+            long now = System.nanoTime();
+            if (now - lastFailLogNs > 3_000_000_000L) {
+                lastFailLogNs = now;
+                LOG.error("VoidDraw frame failed (streak={}) — will retry, visuals not permanently disabled", failStreak, t);
+            }
+            frame = new Frame(List.of());
         }
     }
 
@@ -159,8 +179,9 @@ public final class VoidDraw {
         Minecraft mc = Minecraft.getInstance();
         VertexFormat fmt = XRAY.getVertexFormatBinding(0);
         if (fmt == null) {
-            if (!broken) {
-                broken = true;
+            long now = System.nanoTime();
+            if (now - lastFailLogNs > 10_000_000_000L) {
+                lastFailLogNs = now;
                 LOG.error("VoidDraw: no vertex format on DEBUG_FILLED pipeline");
             }
             return;
@@ -179,7 +200,6 @@ public final class VoidDraw {
         pose.translate(-cam.x, -cam.y, -cam.z);
         Matrix4fc m = pose.last().pose();
 
-        // Sticky crosshair: origin = this-frame camera + look * 0.45 (not extract-time / player body)
         float pt = 0f;
         try {
             pt = mc.getDeltaTracker().getGameTimeDeltaPartialTick(false);
