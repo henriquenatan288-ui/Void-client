@@ -6,16 +6,12 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
 
-/**
- * Detached free camera — velocity integrated once per render frame with
- * frame-independent acceleration (same idea as visual partialTick smoothness).
- */
+/** Independent free camera — velocity integrated once per render frame. */
 public final class FreecamController {
     private FreecamController() {}
 
     public static double baseSpeed = 20.0;
     public static double sprintMult = 3.0;
-    /** Higher = reaches max speed faster (1/s). */
     public static double accel = 12.0;
     public static boolean verticalLock = false;
     public static boolean disableOnDamage = true;
@@ -28,7 +24,7 @@ public final class FreecamController {
     private static double vx, vy, vz;
     private static float yaw, pitch;
     private static long lastStepNs;
-    private static long lastFrameNs; // guard: one integration per render frame
+    private static long lastFrameNs;
     private static float lockedYaw, lockedPitch;
     private static boolean bodyLocked;
 
@@ -66,7 +62,6 @@ public final class FreecamController {
         lastFrameNs = 0L;
     }
 
-    /** Tick-rate checks only (damage / validity / touch look). Motion is in step(). */
     public static void tick(Minecraft mc) {
         if (!active) return;
         LocalPlayer p = mc.player;
@@ -80,18 +75,12 @@ public final class FreecamController {
         captureTouchLook(p);
     }
 
-    /** Mouse / trackpad look (Entity.turn redirected here). */
     public static void look(double dx, double dy) {
         if (!active) return;
-        // Match vanilla-ish feel; dx/dy already include sensitivity from MouseHandler
         float sens = 0.15f;
         try {
-            Minecraft mc = Minecraft.getInstance();
-            if (mc.options != null) {
-                // scale a bit with mouse sensitivity option when available
-                double s = mc.options.sensitivity().get();
-                sens = (float) (0.15 * (s * 0.6 + 0.2));
-            }
+            double s = Minecraft.getInstance().options.sensitivity().get();
+            sens = (float) (0.15 * (s * 0.6 + 0.2));
         } catch (Throwable ignored) {}
         yaw += (float) dx * sens;
         pitch = Mth.clamp(pitch + (float) dy * sens, -90f, 90f);
@@ -99,10 +88,6 @@ public final class FreecamController {
         while (yaw < -180f) yaw += 360f;
     }
 
-    /**
-     * Mobile / touch: player body still receives look deltas; fold them into freecam
-     * and re-lock body so the real player does not turn.
-     */
     public static void captureTouchLook(LocalPlayer p) {
         if (!active || p == null || !bodyLocked) return;
         float py = p.getYRot();
@@ -111,7 +96,6 @@ public final class FreecamController {
         float dPitch = pp - lockedPitch;
         while (dYaw > 180f) dYaw -= 360f;
         while (dYaw < -180f) dYaw += 360f;
-        // Ignore tiny noise; apply meaningful touch deltas
         if (Math.abs(dYaw) > 0.05f || Math.abs(dPitch) > 0.05f) {
             yaw += dYaw;
             pitch = Mth.clamp(pitch + dPitch, -90f, 90f);
@@ -122,39 +106,37 @@ public final class FreecamController {
     }
 
     /**
-     * Integrate velocity once per render frame (called from CameraMixin).
-     * Safe to call multiple times in the same frame — only first runs physics.
+     * Integrate once per render frame. Safe if Camera fires update+setup.
      */
     public static void step(Minecraft mc) {
         if (!active) return;
 
         long now = System.nanoTime();
-        // Once per frame (~8ms min spacing guards double inject from update+setup)
-        if (lastFrameNs != 0L && (now - lastFrameNs) < 8_000_000L) {
-            return;
-        }
+        if (lastFrameNs != 0L && (now - lastFrameNs) < 8_000_000L) return;
         lastFrameNs = now;
 
         double dt = (now - lastStepNs) / 1.0e9;
         lastStepNs = now;
         if (dt < 1.0e-4) return;
-        if (dt > 0.05) dt = 0.05; // avoid huge jumps after lag/pause
+        if (dt > 0.05) dt = 0.05;
 
+        // Do NOT freeze motion when GUI is open — user may still want to look around freecam
+        // only skip key-driven translation if screen blocks game input heavily
+        boolean guiBlocks = false;
         try {
-            if (mc.gui != null && mc.gui.screen() != null) {
-                // Pause motion while GUI open; keep velocity so resume is smooth
-                return;
-            }
+            guiBlocks = mc.gui != null && mc.gui.screen() != null;
         } catch (Throwable ignored) {}
 
-        double f = axis(mc.options.keyUp, mc.options.keyDown);
-        double r = axis(mc.options.keyRight, mc.options.keyLeft);
-        double u = verticalLock ? 0.0 : axis(mc.options.keyJump, mc.options.keyShift);
+        double f = 0, r = 0, u = 0;
+        if (!guiBlocks) {
+            f = axis(mc.options.keyUp, mc.options.keyDown);
+            r = axis(mc.options.keyRight, mc.options.keyLeft);
+            u = verticalLock ? 0.0 : axis(mc.options.keyJump, mc.options.keyShift);
+        }
 
         double yr = Math.toRadians(yaw);
         double pr = verticalLock ? 0.0 : Math.toRadians(pitch);
 
-        // Forward (look dir) and right (horizontal)
         double fx = -Math.sin(yr) * Math.cos(pr);
         double fy = verticalLock ? 0.0 : -Math.sin(pr);
         double fz = Math.cos(yr) * Math.cos(pr);
@@ -164,14 +146,13 @@ public final class FreecamController {
         double wishX = fx * f + rx * r;
         double wishY = fy * f + u;
         double wishZ = fz * f + rz * r;
-
         double wishLen = Math.sqrt(wishX * wishX + wishY * wishY + wishZ * wishZ);
-        boolean sprint = false;
-        try { sprint = mc.options.keySprint.isDown(); } catch (Throwable ignored) {}
-        double maxSpeed = baseSpeed * (sprint ? sprintMult : 1.0);
 
-        // Frame-independent exponential approach toward wish velocity
+        boolean sprint = false;
+        try { sprint = !guiBlocks && mc.options.keySprint.isDown(); } catch (Throwable ignored) {}
+        double maxSpeed = baseSpeed * (sprint ? sprintMult : 1.0);
         double rate = Math.max(1.0, accel);
+
         if (wishLen > 1.0e-6) {
             wishX = wishX / wishLen * maxSpeed;
             wishY = wishY / wishLen * maxSpeed;
@@ -181,24 +162,18 @@ public final class FreecamController {
             vy += (wishY - vy) * a;
             vz += (wishZ - vz) * a;
         } else {
-            // Coast / brake
             double damp = Math.exp(-rate * 0.65 * dt);
             vx *= damp;
             vy *= damp;
             vz *= damp;
-            if (vx * vx + vy * vy + vz * vz < 1.0e-6) {
-                vx = vy = vz = 0;
-            }
+            if (vx * vx + vy * vy + vz * vz < 1.0e-6) vx = vy = vz = 0;
         }
 
-        // Soft clamp so accel overshoot cannot exceed ~1.25x max
         double spd = Math.sqrt(vx * vx + vy * vy + vz * vz);
         double cap = maxSpeed * 1.25;
         if (spd > cap && spd > 1.0e-6) {
             double s = cap / spd;
-            vx *= s;
-            vy *= s;
-            vz *= s;
+            vx *= s; vy *= s; vz *= s;
         }
 
         x += vx * dt;

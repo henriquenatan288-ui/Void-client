@@ -18,6 +18,8 @@ import java.util.Optional;
 import java.util.OptionalDouble;
 import java.util.concurrent.CopyOnWriteArrayList;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
+import net.fabricmc.fabric.api.client.rendering.v1.level.LevelExtractionContext;
+import net.fabricmc.fabric.api.client.rendering.v1.level.LevelExtractionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext;
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
 import net.minecraft.client.Minecraft;
@@ -33,6 +35,11 @@ import org.joml.Vector4f;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Shape pipeline — extraction-era timing (A–D style):
+ * extract on LevelExtractionEvents, draw after translucent terrain.
+ * Soft-fail kept so one bad frame does not permanently disable visuals.
+ */
 public final class VoidDraw {
     private VoidDraw() {}
 
@@ -61,10 +68,6 @@ public final class VoidDraw {
     private static long lastFailLogNs;
     private static final int MAX_FAIL_STREAK = 30;
 
-    /** Last fractional second used when delta tracker returns 0 (keeps spin continuous). */
-    private static long smoothEpochNs = System.nanoTime();
-    private static long smoothWorldAnchor = Long.MIN_VALUE;
-
     private static final RenderPipeline XRAY = RenderPipelines.register(
             RenderPipeline.builder(RenderPipelines.DEBUG_FILLED_SNIPPET)
                     .withLocation(Identifier.fromNamespaceAndPath("voidclient", "pipeline/shapes_xray"))
@@ -82,21 +85,13 @@ public final class VoidDraw {
             new StagedVertexBuffer(() -> "VoidDraw buffer", RenderType.SMALL_BUFFER_SIZE);
 
     public static void init() {
-        // Extract + draw on the same render callback so animation runs at frame rate,
-        // not only at LevelExtraction (often tick-rate / pt=0 → teleporting spins).
-        LevelRenderEvents.AFTER_TRANSLUCENT_TERRAIN.register(ctx -> {
-            extractFresh();
-            draw(ctx);
-        });
+        LevelExtractionEvents.END_EXTRACTION.register(VoidDraw::extractAll);
+        LevelRenderEvents.AFTER_TRANSLUCENT_TERRAIN.register(VoidDraw::draw);
         ClientLifecycleEvents.CLIENT_STOPPING.register(c -> BUF.close());
-        LOG.info("VoidDraw initialized (per-frame extract for smooth motion)");
+        LOG.info("VoidDraw initialized (extraction-era + soft-fail)");
     }
 
-    /**
-     * Resolve partial tick for smooth world-time animation.
-     * Falls back to a high-res fraction of the current tick when the tracker returns 0
-     * during some render phases (common cause of 20Hz "teleport" visuals).
-     */
+    /** Partial tick helper (modules may call). */
     public static float resolvePartialTick(Minecraft mc) {
         float pt = 0f;
         try {
@@ -107,34 +102,12 @@ public final class VoidDraw {
                 pt = mc.getDeltaTracker().getGameTimeDeltaPartialTick(true);
             } catch (Throwable ignored) {}
         }
-        if (pt > 1e-5f && pt < 1.0001f) return pt;
-
-        // Synthesize sub-tick fraction from wall clock, anchored to world time
-        long world = 0L;
-        if (mc.level != null) {
-            try { world = mc.level.getGameTime(); } catch (Throwable ignored) {}
-        }
-        long now = System.nanoTime();
-        if (world != smoothWorldAnchor) {
-            smoothWorldAnchor = world;
-            smoothEpochNs = now;
-        }
-        double frac = (now - smoothEpochNs) / 50_000_000.0; // 1 tick ≈ 50ms
-        if (frac < 0) frac = 0;
-        if (frac > 0.999) frac = 0.999;
-        return (float) frac;
+        if (pt < 0f) pt = 0f;
+        if (pt > 1f) pt = 1f;
+        return pt;
     }
 
-    /** Smooth seconds for orbit/spin: (gameTime + partial) / 20. */
-    public static double smoothSeconds(Minecraft mc) {
-        long gt = 0L;
-        if (mc.level != null) {
-            try { gt = mc.level.getGameTime(); } catch (Throwable ignored) {}
-        }
-        return (gt + resolvePartialTick(mc)) / 20.0;
-    }
-
-    private static void extractFresh() {
+    private static void extractAll(LevelExtractionContext ctx) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.level == null) {
             frame = new Frame(List.of());
