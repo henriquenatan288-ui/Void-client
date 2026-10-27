@@ -114,20 +114,20 @@ public class WorldFx extends Module {
                 case EMBER -> {
                     rgb = Visuals.mix(0xFF4D8D, 0xFFB52E, h(i, 4));
                     particleSize = 0.045;
-                    py += (0.5 - life) * 1.6;
+                    py += Math.sin(q * 0.35 + seed) * 0.45;
                 }
                 case LEAF -> {
                     rgb = neonColor(i, 0x72FF6A, 0x39E6B2, 0xD5FF57);
                     particleSize = 0.07;
                     px += wx * Math.sin(q * 0.5) * 0.45;
                     pz += wz * Math.sin(q * 0.5) * 0.45;
-                    py += (life - 0.5) * -1.1;
+                    py += Math.sin(q * 0.24 + seed * 0.7) * 0.55;
                 }
                 case ASH -> {
                     rgb = Visuals.mix(0x8DBBFF, 0xD4C8FF, h(i, 7));
                     particleSize = 0.035;
                     localAlpha *= 0.55;
-                    py += (life - 0.5) * -0.6;
+                    py += Math.sin(q * 0.18 + seed * 1.1) * 0.25;
                 }
                 default -> {
                     rgb = Visuals.mix(0x67F7FF, 0xFFF0A8, h(i, 5));
