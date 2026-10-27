@@ -41,6 +41,8 @@ import dev.voidclient.modules.utility.CoordsCopy;
 import dev.voidclient.modules.utility.InvCleaner;
 import dev.voidclient.modules.utility.MiddleClickFriend;
 import dev.voidclient.modules.utility.Timer;
+import dev.voidclient.modules.visual.Visuals;
+import dev.voidclient.modules.visual.WorldFx;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.IdentityHashMap;
@@ -56,11 +58,9 @@ public class ModuleManager {
     public ModuleManager(EventBus eventBus) {
         register(new ClickGuiModule());
 
-        // Combat
         register(new AutoTotem());
         register(new SlowHit());
 
-        // Movement
         register(new Fly());
         register(new Jesus());
         register(new FlyBoat());
@@ -68,7 +68,6 @@ public class ModuleManager {
         register(new NoFall());
         register(new ToggleSprint());
 
-        // Render
         register(new Freecam());
         register(new Freelook());
         register(new BlockESP());
@@ -77,8 +76,9 @@ public class ModuleManager {
         register(new Particles());
         register(new BreakWaves());
         register(new Fullbright());
+        register(new Visuals());
+        register(new WorldFx());
 
-        // Utility
         register(new AutoSprint());
         register(new AutoRespawn());
         register(new AutoEat());
@@ -88,7 +88,6 @@ public class ModuleManager {
         register(new InvCleaner());
         register(new Timer());
 
-        // Misc
         register(new Derp());
         register(new NoHurtCam());
         register(new Zoom());
@@ -96,11 +95,9 @@ public class ModuleManager {
         register(new NameProtect());
         register(new Panic());
 
-        // Personalization
         register(new GuiTheme());
         register(new HudTheme());
 
-        // HUD
         register(new FPS());
         register(new ArrayListHud());
         register(new Watermark());
