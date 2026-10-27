@@ -4,15 +4,23 @@ import dev.voidclient.VoidClient;
 import dev.voidclient.core.Category;
 import dev.voidclient.core.Module;
 import dev.voidclient.core.setting.ModeSetting;
+import dev.voidclient.core.setting.NumberSetting;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.particle.DustParticleEffect;
 import net.minecraft.particle.ParticleEffect;
 import net.minecraft.particle.ParticleTypes;
 
 /** Cosmetic particle patterns around the local player, including on Minimal particle settings. */
 public class Particles extends Module {
     private final ModeSetting mode = addSetting(new ModeSetting(
-            "Style", "Particle style", "Crown", "Crown", "Sword", "Totem", "Mix"));
+            "Style", "Particle style", "Crown", "Crown", "Sword", "Totem", "Mix", "Money"));
+    private final NumberSetting moneyRadius = addSetting(
+            new NumberSetting("Money Radius", "Orbit radius for the neon banknote", 0.85, 0.4, 1.8, 0.05));
+    private final NumberSetting moneySpeed = addSetting(
+            new NumberSetting("Money Speed", "Floating animation speed", 0.8, 0.2, 2.0, 0.1));
+    private final NumberSetting moneyDensity = addSetting(
+            new NumberSetting("Money Detail", "Number of points on the banknote outline", 3, 2, 6, 1));
     private int tick;
     private boolean loggedFirstSpawn;
 
@@ -46,6 +54,7 @@ public class Particles extends Module {
             case "Crown" -> crown(mc, x, y, z);
             case "Sword" -> sword(mc, x, y, z);
             case "Totem" -> totem(mc, x, y, z);
+            case "Money" -> money(mc, x, y, z);
             case "Mix" -> {
                 switch ((tick / 2) % 3) {
                     case 0 -> crown(mc, x, y, z);
@@ -91,6 +100,50 @@ public class Particles extends Module {
                     y + 0.45 + (i % 3) * 0.35,
                     z + Math.sin(angle) * 0.65,
                     0, 0.12, 0);
+        }
+    }
+
+    private void money(MinecraftClient mc, double x, double y, double z) {
+        double phase = tick * 0.055 * moneySpeed.get();
+        double orbit = moneyRadius.get();
+        double cx = x + Math.cos(phase) * orbit;
+        double cy = y + 1.15 + Math.sin(phase * 1.7) * 0.24;
+        double cz = z + Math.sin(phase) * orbit;
+        double rotation = phase * 1.8 + Math.PI * 0.15;
+        double rightX = Math.cos(rotation), rightZ = Math.sin(rotation);
+        double halfW = 0.25, halfH = 0.15;
+        int detail = moneyDensity.getInt();
+        DustParticleEffect neonGreen = new DustParticleEffect(0x53FF9D, 0.58f);
+
+        // Four glowing edges of a small rectangular banknote.
+        for (int edge = 0; edge < 4; edge++) {
+            double[][] corners = {
+                    {-halfW, -halfH}, {halfW, -halfH},
+                    {halfW, halfH}, {-halfW, halfH}
+            };
+            double[] a = corners[edge], b = corners[(edge + 1) % 4];
+            for (int point = 0; point < detail; point++) {
+                double t = point / (double) detail;
+                double localX = a[0] + (b[0] - a[0]) * t;
+                double localY = a[1] + (b[1] - a[1]) * t;
+                emit(mc, neonGreen,
+                        cx + rightX * localX, cy + localY, cz + rightZ * localX,
+                        -rightX * 0.008, 0.008, -rightZ * 0.008);
+            }
+        }
+
+        // Minimal center emblem and inner stripe to make the silhouette read as a banknote.
+        for (int point = 0; point < 4; point++) {
+            double angle = Math.PI * 0.5 * point + rotation;
+            emit(mc, neonGreen,
+                    cx + Math.cos(angle) * 0.075, cy, cz + Math.sin(angle) * 0.075,
+                    0, 0.006, 0);
+        }
+        for (int point = 0; point < detail; point++) {
+            double t = point / (double) Math.max(1, detail - 1);
+            emit(mc, neonGreen,
+                    cx + rightX * ((t - 0.5) * 0.25), cy + halfH * 0.55,
+                    cz + rightZ * ((t - 0.5) * 0.25), 0, 0.004, 0);
         }
     }
 

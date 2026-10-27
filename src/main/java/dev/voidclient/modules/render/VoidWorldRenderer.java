@@ -1,6 +1,7 @@
 package dev.voidclient.modules.render;
 
 import dev.voidclient.VoidClient;
+import dev.voidclient.modules.visual.Visuals;
 import dev.voidclient.core.Module;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
 import net.minecraft.client.MinecraftClient;
@@ -23,6 +24,7 @@ public final class VoidWorldRenderer {
         Vec3d cameraPos = camera.getCameraPos();
         float tickProgress = mc.getRenderTickCounter().getTickProgress(false);
         if (context.consumers() == null) return;
+        Visuals.renderCustomSky(context);
         VertexConsumer vertices = context.consumers().getBuffer(VoidRenderLayers.ESP_LINES);
 
         Module playerEspModule = VoidClient.MODULE_MANAGER == null ? null

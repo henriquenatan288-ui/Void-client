@@ -7,6 +7,7 @@ import dev.voidclient.core.event.events.KeyEvent;
 import dev.voidclient.core.event.events.Render2DEvent;
 import dev.voidclient.core.event.events.TickEvent;
 import dev.voidclient.gui.ClickGuiScreen;
+import dev.voidclient.modules.visual.Visuals;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
@@ -15,7 +16,7 @@ import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
 import dev.voidclient.modules.render.VoidWorldRenderer;
 import dev.voidclient.modules.render.VoidRenderLayers;
-import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.SharedConstants;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.text.Text;
@@ -76,6 +77,7 @@ public class VoidClient implements ClientModInitializer {
         HudRenderCallback.EVENT.register((drawContext, tickCounter) -> {
             float tickDelta = tickCounter.getTickProgress(false);
             EVENT_BUS.post(new Render2DEvent(drawContext, tickDelta));
+            Visuals.renderScreenFilter(drawContext);
         });
 
         LOGGER.info("{} initialized. Modules: {}. Press Right Shift for GUI.",
@@ -84,7 +86,7 @@ public class VoidClient implements ClientModInitializer {
 
     private static void validateEnvironment() {
         int javaVersion = Runtime.version().feature();
-        String minecraftVersion = FabricLoader.getInstance().getGameVersion().getFriendlyString();
+        String minecraftVersion = SharedConstants.getGameVersion().name();
 
         if (javaVersion < 21) {
             throw new IllegalStateException(
