@@ -1,7 +1,6 @@
 package dev.voidclient.render;
 
 import com.mojang.blaze3d.PrimitiveTopology;
-import com.mojang.blaze3d.buffers.GpuBufferSlice;
 import com.mojang.blaze3d.pipeline.RenderPipeline;
 import com.mojang.blaze3d.pipeline.RenderTarget;
 import com.mojang.blaze3d.systems.RenderPass;
@@ -198,8 +197,9 @@ public final class VoidDraw {
             BUF.upload();
             StagedVertexBuffer.ExecuteInfo iX = BUF.getExecuteInfo(dX);
             StagedVertexBuffer.ExecuteInfo iD = BUF.getExecuteInfo(dD);
-            if (iX != null) execute(mc, iX, XRAY);
+            // Draw depth-tested geometry first so X-ray overlays remain visible on top.
             if (iD != null) execute(mc, iD, DEPTH);
+            if (iX != null) execute(mc, iX, XRAY);
         } finally {
             // Restore the extraction/render context even if vertex generation or upload fails.
             try {
