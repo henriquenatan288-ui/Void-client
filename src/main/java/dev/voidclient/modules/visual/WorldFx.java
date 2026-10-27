@@ -178,17 +178,21 @@ public class WorldFx extends Module {
 
     private void drawParticle(VoidDraw.Sink sink, double x, double y, double z,
                               double size, int rgb, double alpha) {
+        // Tiny crossed strokes read as glowing motes instead of large filled cubes.
+        // A faint outer pass gives a soft halo without expanding a solid square.
         if (neon.get()) {
-            // Layered, low-alpha quads create a translucent neon halo.
-            cube(sink, x, y, z, size * 2.8, Visuals.argb(rgb, alpha * 0.15));
+            mote(sink, x, y, z, size * 2.0, rgb, alpha * 0.12, 0.018f);
         }
-        cube(sink, x, y, z, size, Visuals.argb(rgb, alpha * 0.9));
+        mote(sink, x, y, z, size, rgb, alpha * 0.92, 0.009f);
     }
 
-    private static void cube(VoidDraw.Sink sink, double x, double y, double z,
-                             double halfSize, int color) {
-        sink.box(x - halfSize, y - halfSize, z - halfSize,
-                x + halfSize, y + halfSize, z + halfSize, color, false);
+    private static void mote(VoidDraw.Sink sink, double x, double y, double z,
+                             double size, int rgb, double alpha, float width) {
+        int color = Visuals.argb(rgb, alpha);
+        Vec3 center = new Vec3(x, y, z);
+        sink.line(center.add(-size, 0, 0), center.add(size, 0, 0), width, false, color, false);
+        sink.line(center.add(0, -size, 0), center.add(0, size, 0), width, false, color, false);
+        sink.line(center.add(0, 0, -size), center.add(0, 0, size), width, false, color, false);
     }
 
     private static double motionScale(Kind kind) {
