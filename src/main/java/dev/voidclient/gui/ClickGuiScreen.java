@@ -4,7 +4,6 @@ import dev.voidclient.VoidClient;
 import dev.voidclient.core.Category;
 import dev.voidclient.core.Module;
 import dev.voidclient.gui.components.ModuleCard;
-import dev.voidclient.gui.components.SettingsPanel;
 import dev.voidclient.gui.utils.RenderUtils;
 import org.lwjgl.glfw.GLFW;
 
@@ -24,7 +23,6 @@ public class ClickGuiScreen extends Screen {
 
     private Category selected = Category.COMBAT;
     private final List<ModuleCard> cards = new ArrayList<>();
-    private SettingsPanel settingsPanel;
 
     private float openAnim = 0f;
     private long lastNs = System.nanoTime();
@@ -120,11 +118,6 @@ public class ClickGuiScreen extends Screen {
             RenderUtils.drawText(context, font, "No modules here yet", contentX, startY + 12, Theme.TEXT_MUTED(), false);
         }
 
-        if (settingsPanel != null && settingsPanel.isVisible()) {
-            settingsPanel.update(dt);
-            settingsPanel.render(context, font, mouseX, mouseY);
-        }
-
         RenderUtils.drawText(context, font,
                 "RShift close  |  LMB toggle  |  RMB settings",
                 contentX, height - 14, Theme.TEXT_MUTED(), false);
@@ -141,27 +134,17 @@ public class ClickGuiScreen extends Screen {
             if (RenderUtils.hovered((int) mouseX, (int) mouseY, 8, cy, SIDEBAR_W - 16, 22)) {
                 selected = cat;
                 rebuildCards();
-                settingsPanel = null;
                 return true;
             }
             cy += 26;
         }
 
-        if (settingsPanel != null && settingsPanel.isVisible()) {
-            if (settingsPanel.mouseClicked(mouseX, mouseY, button, font)) {
-                if (!settingsPanel.isVisible()) settingsPanel = null;
-                return true;
-            }
-        }
-
         for (ModuleCard card : cards) {
             if (card.mouseClicked(mouseX, mouseY, button)) {
                 if (button == 1) {
-                    int px = card.getX() + ModuleCard.WIDTH + 8;
-                    int py = card.getY();
-                    if (px + SettingsPanel.WIDTH > width - 8) px = card.getX() - SettingsPanel.WIDTH - 8;
-                    if (py + 80 > height) py = height - 100;
-                    settingsPanel = new SettingsPanel(card.getModule(), Math.max(SIDEBAR_W + 4, px), Math.max(8, py));
+                    if (minecraft != null) {
+                        minecraft.gui.setScreen(new ModuleSettingsScreen(this, card.getModule()));
+                    }
                 }
                 return true;
             }
