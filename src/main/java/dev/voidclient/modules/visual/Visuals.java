@@ -6,11 +6,16 @@ import dev.voidclient.core.Module;
 import dev.voidclient.core.setting.BooleanSetting;
 import dev.voidclient.core.setting.ModeSetting;
 import dev.voidclient.core.setting.NumberSetting;
-import dev.voidclient.modules.render.VoidRenderLayers;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.Camera;
 import net.minecraft.client.render.VertexConsumer;
+import net.minecraft.client.render.RenderLayer;
+import net.minecraft.client.render.RenderSetup;
+import net.minecraft.client.gl.RenderPipelines;
+import com.mojang.blaze3d.pipeline.RenderPipeline;
+import com.mojang.blaze3d.platform.DepthTestFunction;
+import net.minecraft.util.Identifier;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.util.math.Vec3d;
 
@@ -19,6 +24,18 @@ import net.minecraft.util.math.Vec3d;
  * The custom sky draws lightweight depth-tested accents; it does not replace vanilla sky rendering.
  */
 public final class Visuals extends Module {
+    private static final RenderPipeline SKY_PIPELINE = RenderPipelines.register(
+            RenderPipeline.builder(RenderPipelines.RENDERTYPE_LINES_SNIPPET)
+                    .withLocation(Identifier.of("voidclient", "pipeline/sky_lines"))
+                    .withDepthTestFunction(DepthTestFunction.LEQUAL_DEPTH_TEST)
+                    .withDepthWrite(false)
+                    .build()
+    );
+    private static final RenderLayer SKY_LINES = RenderLayer.of(
+            "voidclient_sky_lines",
+            RenderSetup.builder(SKY_PIPELINE).expectedBufferSize(8192).build()
+    );
+
     private final BooleanSetting customSky = addSetting(
             new BooleanSetting("Custom Sky", "Draw starfield and ring accents in the sky", false));
     private final ModeSetting skyStyle = addSetting(
@@ -66,7 +83,7 @@ public final class Visuals extends Module {
         if (mc.player == null || mc.world == null || mc.gameRenderer == null) return;
         Camera camera = mc.gameRenderer.getCamera();
         Vec3d cameraPos = camera.getCameraPos();
-        VertexConsumer vertices = context.consumers().getBuffer(VoidRenderLayers.ESP_LINES);
+        VertexConsumer vertices = context.consumers().getBuffer(SKY_LINES);
         float intensity = visuals.skyIntensity.getFloat();
         String style = visuals.skyStyle.get();
 
