@@ -7,6 +7,7 @@ import dev.voidclient.core.event.events.KeyEvent;
 import dev.voidclient.core.event.events.Render2DEvent;
 import dev.voidclient.core.event.events.TickEvent;
 import dev.voidclient.gui.ClickGuiScreen;
+import dev.voidclient.modules.visual.Visuals;
 import dev.voidclient.render.EspExtractors;
 import dev.voidclient.render.VoidDraw;
 import net.fabricmc.api.ClientModInitializer;
@@ -77,6 +78,11 @@ public class VoidClient implements ClientModInitializer {
         HudElementRegistry.addLast(Identifier.fromNamespaceAndPath(MOD_ID, "hud"), (drawContext, tickCounter) -> {
             float tickDelta = tickCounter.getGameTimeDeltaPartialTick(false);
             EVENT_BUS.post(new Render2DEvent(drawContext, tickDelta));
+
+            if (MODULE_MANAGER != null) {
+                var module = MODULE_MANAGER.getByName("Visuals");
+                if (module instanceof Visuals visuals) visuals.renderScreenFilter(drawContext);
+            }
         });
 
         LOGGER.info("{} initialized. Modules: {}. Press Right Shift for GUI.",
