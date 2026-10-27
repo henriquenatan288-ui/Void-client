@@ -33,6 +33,8 @@ import dev.voidclient.modules.render.Fullbright;
 import dev.voidclient.modules.render.Particles;
 import dev.voidclient.modules.render.PlayerESP;
 import dev.voidclient.modules.render.Tracers;
+import dev.voidclient.modules.visual.Visuals;
+import dev.voidclient.modules.visual.WorldFx;
 import dev.voidclient.modules.utility.AutoEat;
 import dev.voidclient.modules.utility.AutoRespawn;
 import dev.voidclient.modules.utility.AutoSprint;
@@ -77,6 +79,8 @@ public class ModuleManager {
         register(new Particles());
         register(new BreakWaves());
         register(new Fullbright());
+        register(new Visuals());
+        register(new WorldFx());
 
         // Utility
         register(new AutoSprint());
