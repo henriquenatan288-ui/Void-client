@@ -166,7 +166,8 @@ public class AntVanish extends Module {
         entries.keySet().retainAll(wanted);
     }
 
-    public void renderHud(GuiGraphicsExtractor ctx, float tickDelta) {
+    @Override
+    public void onRender2D(GuiGraphicsExtractor ctx, float tickDelta) {
         Minecraft mc = Minecraft.getInstance();
         if (mc == null || mc.font == null || ctx == null || mc.level == null) return;
 
