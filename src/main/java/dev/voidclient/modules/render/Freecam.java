@@ -6,6 +6,7 @@ import dev.voidclient.core.Module;
 import dev.voidclient.core.setting.BooleanSetting;
 import dev.voidclient.core.setting.NumberSetting;
 import dev.voidclient.freecam.FreecamController;
+import dev.voidclient.freelook.FreelookController;
 import net.minecraft.client.Minecraft;
 
 public class Freecam extends Module {
@@ -33,11 +34,11 @@ public class Freecam extends Module {
             setEnabled(false);
             return;
         }
-        if (CameraControl.isFreelookActive() && VoidClient.MODULE_MANAGER != null) {
+        // Disable Freelook if active (controllers are mutually exclusive)
+        if (FreelookController.isActive() && VoidClient.MODULE_MANAGER != null) {
             Module fl = VoidClient.MODULE_MANAGER.getByName("Freelook");
             if (fl != null && fl.isEnabled()) fl.disable();
         }
-        CameraControl.stopFreecam();
         applySettings();
         FreecamController.onAutoStop = () -> {
             if (isEnabled()) setEnabled(false);

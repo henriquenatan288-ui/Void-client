@@ -1,6 +1,5 @@
 package dev.voidclient.modules.render;
 
-import dev.voidclient.VoidClient;
 import dev.voidclient.core.Category;
 import dev.voidclient.core.Module;
 import dev.voidclient.core.setting.BooleanSetting;
@@ -44,7 +43,6 @@ public class Freelook extends Module {
         FreelookController.onAutoStop = () -> {
             if (isEnabled()) setEnabled(false);
         };
-        CameraControl.stopFreelook();
         FreelookController.start(mc);
     }
 
