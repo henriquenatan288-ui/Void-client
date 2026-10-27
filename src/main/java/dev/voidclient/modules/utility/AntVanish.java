@@ -105,6 +105,12 @@ public class AntVanish extends Module {
     @Override
     protected void onDisable() { entries.clear(); }
 
+    @Override
+    public void onWorldUnload() {
+        entries.clear();
+        tick = 0;
+    }
+
     public static List<String> onlineNames() {
         List<String> out = new ArrayList<>();
         Minecraft mc = Minecraft.getInstance();
