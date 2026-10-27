@@ -23,6 +23,8 @@ import net.minecraft.world.phys.Vec3;
  * Desenha pelo VoidDraw.Sink (line/box), sem pipeline novo. Lógica derivada do
  * "Visual Client Community" (c) 2026 Alatic, licença MIT.
  *
+ * Compatível com VoidDraw.Extractor de 3 argumentos (PR #7: extract(sink, mc, partialTick)).
+ *
  * Caminho: src/main/java/dev/voidclient/modules/visual/Visuals.java
  */
 public class Visuals extends Module {
@@ -133,9 +135,9 @@ public class Visuals extends Module {
     }
 
     // ------------------------------------------------------------------ extração (desenho)
-    private void extract(VoidDraw.Sink sink, Minecraft mc) {
+    private void extract(VoidDraw.Sink sink, Minecraft mc, float partialTick) {
         if (!isEnabled() || mc.level == null || mc.player == null) return;
-        float pt = mc.getDeltaTracker().getGameTimeDeltaPartialTick(false);
+        float pt = partialTick;   // vem do VoidDraw (PR #7)
         long gt = mc.level.getGameTime();
         double sec = (gt + pt) / 20.0;
         double alpha = opacity.get();
