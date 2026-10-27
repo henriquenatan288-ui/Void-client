@@ -16,7 +16,7 @@ import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
 import dev.voidclient.modules.render.VoidWorldRenderer;
 import dev.voidclient.modules.render.VoidRenderLayers;
-import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.SharedConstants;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.text.Text;
@@ -86,7 +86,7 @@ public class VoidClient implements ClientModInitializer {
 
     private static void validateEnvironment() {
         int javaVersion = Runtime.version().feature();
-        String minecraftVersion = FabricLoader.getInstance().getGameVersion().getFriendlyString();
+        String minecraftVersion = SharedConstants.getGameVersion().name();
 
         if (javaVersion < 21) {
             throw new IllegalStateException(
