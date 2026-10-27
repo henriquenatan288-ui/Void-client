@@ -37,6 +37,7 @@ public final class VoidWorldRenderer {
     private static final StagedVertexBuffer STAGED =
             new StagedVertexBuffer(() -> "VoidClient ESP Buffer", RenderType.SMALL_BUFFER_SIZE);
     private static boolean loggedPipelineFail;
+    private static long lastRenderFailNs;
 
     private VoidWorldRenderer() {}
 
@@ -56,91 +57,105 @@ public final class VoidWorldRenderer {
             return;
         }
 
-        StagedVertexBuffer.Draw draw = STAGED.appendDraw(
-                formatBinding, pipeline.getPrimitiveTopology(), null);
-
         PoseStack matrices = context.poseStack();
-        Camera cam = mc.gameRenderer.mainCamera();
-        Vec3 cameraPos = cam.position();
-
-        matrices.pushPose();
-        matrices.translate(-cameraPos.x, -cameraPos.y, -cameraPos.z);
-        Matrix4f pose = matrices.last().pose();
-        VertexConsumer builder = STAGED.getVertexBuilder(draw);
-        float partialTick = 1.0f;
+        boolean pushed = false;
         try {
-            partialTick = mc.getDeltaTracker().getGameTimeDeltaPartialTick(false);
-        } catch (Throwable ignored) {}
+            StagedVertexBuffer.Draw draw = STAGED.appendDraw(
+                    formatBinding, pipeline.getPrimitiveTopology(), null);
 
-        Module blockMod = VoidClient.MODULE_MANAGER.getByName("BlockESP");
-        if (blockMod instanceof BlockESP blockEsp && blockEsp.isEnabled()) {
-            int color = blockEsp.getEspColor();
-            boolean tracers = blockEsp.shouldDrawTracers();
-            for (BlockPos pos : blockEsp.getFoundBlocks()) {
-                boxEdges(builder, pose,
-                        pos.getX(), pos.getY(), pos.getZ(),
-                        pos.getX() + 1, pos.getY() + 1, pos.getZ() + 1, color);
-                if (tracers) {
-                    tracer(builder, pose, cam,
-                            pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, color);
+            Camera cam = mc.gameRenderer.mainCamera();
+            Vec3 cameraPos = cam.position();
+
+            matrices.pushPose();
+            pushed = true;
+            matrices.translate(-cameraPos.x, -cameraPos.y, -cameraPos.z);
+            Matrix4f pose = matrices.last().pose();
+            VertexConsumer builder = STAGED.getVertexBuilder(draw);
+            float partialTick = 1.0f;
+            try {
+                partialTick = mc.getDeltaTracker().getGameTimeDeltaPartialTick(false);
+            } catch (Throwable ignored) {}
+
+            Module blockMod = VoidClient.MODULE_MANAGER.getByName("BlockESP");
+            if (blockMod instanceof BlockESP blockEsp && blockEsp.isEnabled()) {
+                int color = blockEsp.getEspColor();
+                boolean tracers = blockEsp.shouldDrawTracers();
+                for (BlockPos pos : blockEsp.getFoundBlocks()) {
+                    boxEdges(builder, pose,
+                            pos.getX(), pos.getY(), pos.getZ(),
+                            pos.getX() + 1, pos.getY() + 1, pos.getZ() + 1, color);
+                    if (tracers) {
+                        tracer(builder, pose, cam,
+                                pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, color);
+                    }
                 }
             }
-        }
 
-        Module playerMod = VoidClient.MODULE_MANAGER.getByName("PlayerESP");
-        if (playerMod instanceof PlayerESP playerEsp && playerEsp.isEnabled()) {
-            int color = playerEsp.getEspColor();
-            for (AbstractClientPlayer other : playerEsp.getTargets()) {
-                double x = lerpX(other, partialTick);
-                double y = lerpY(other, partialTick);
-                double z = lerpZ(other, partialTick);
-                float hw = other.getBbWidth() / 2.0f;
-                float h = other.getBbHeight();
-                boxEdges(builder, pose, x - hw, y, z - hw, x + hw, y + h, z + hw, color);
-            }
-        }
-
-        Module tracersMod = VoidClient.MODULE_MANAGER.getByName("Tracers");
-        if (tracersMod instanceof Tracers tracers && tracers.isEnabled()) {
-            for (AbstractClientPlayer other : tracers.getTargets()) {
-                double x = lerpX(other, partialTick);
-                double y = lerpY(other, partialTick);
-                double z = lerpZ(other, partialTick);
-                tracer(builder, pose, cam, x, y + other.getBbHeight() * 0.5, z,
-                        tracers.getTracerColor(other));
-            }
-        }
-
-        Module wavesMod = VoidClient.MODULE_MANAGER.getByName("BreakWaves");
-        if (wavesMod instanceof BreakWaves breakWaves && breakWaves.isEnabled()) {
-            int baseColor = breakWaves.getWaveColor();
-            int ringCount = breakWaves.getWaveCount();
-            int maxAge = Math.max(1, breakWaves.getMaxAge());
-            long now = mc.level.getGameTime();
-            for (BreakWaves.Wave wave : breakWaves.getActiveWaves()) {
-                for (int ring = 0; ring < ringCount; ring++) {
-                    float ageF = (now - wave.born) + partialTick - ring * 2.5f;
-                    if (ageF < 0 || ageF > maxAge) continue;
-                    float t = ageF / maxAge;
-                    float fade = (1.0f - t) * (1.0f - t);
-                    int baseA = (baseColor >>> 24) & 0xFF;
-                    int a = Math.max(18, (int) (baseA * fade));
-                    int rgb = baseColor & 0x00FFFFFF;
-                    int faded = (a << 24) | rgb;
-                    double radius = 0.2 + ageF * 0.32;
-                    double yOff = ring * 0.04;
-                    ring(builder, pose, wave.x, wave.y + yOff, wave.z, radius, 28, faded);
-                    ring(builder, pose, wave.x, wave.y + yOff + 0.06, wave.z, radius * 0.92, 20, faded);
+            Module playerMod = VoidClient.MODULE_MANAGER.getByName("PlayerESP");
+            if (playerMod instanceof PlayerESP playerEsp && playerEsp.isEnabled()) {
+                int color = playerEsp.getEspColor();
+                for (AbstractClientPlayer other : playerEsp.getTargets()) {
+                    double x = lerpX(other, partialTick);
+                    double y = lerpY(other, partialTick);
+                    double z = lerpZ(other, partialTick);
+                    float hw = other.getBbWidth() / 2.0f;
+                    float h = other.getBbHeight();
+                    boxEdges(builder, pose, x - hw, y, z - hw, x + hw, y + h, z + hw, color);
                 }
             }
+
+            Module tracersMod = VoidClient.MODULE_MANAGER.getByName("Tracers");
+            if (tracersMod instanceof Tracers tracers && tracers.isEnabled()) {
+                for (AbstractClientPlayer other : tracers.getTargets()) {
+                    double x = lerpX(other, partialTick);
+                    double y = lerpY(other, partialTick);
+                    double z = lerpZ(other, partialTick);
+                    tracer(builder, pose, cam, x, y + other.getBbHeight() * 0.5, z,
+                            tracers.getTracerColor(other));
+                }
+            }
+
+            Module wavesMod = VoidClient.MODULE_MANAGER.getByName("BreakWaves");
+            if (wavesMod instanceof BreakWaves breakWaves && breakWaves.isEnabled()) {
+                int baseColor = breakWaves.getWaveColor();
+                int ringCount = breakWaves.getWaveCount();
+                int maxAge = Math.max(1, breakWaves.getMaxAge());
+                long now = mc.level.getGameTime();
+                for (BreakWaves.Wave wave : breakWaves.getActiveWaves()) {
+                    for (int ring = 0; ring < ringCount; ring++) {
+                        float ageF = (now - wave.born) + partialTick - ring * 2.5f;
+                        if (ageF < 0 || ageF > maxAge) continue;
+                        float t = ageF / maxAge;
+                        float fade = (1.0f - t) * (1.0f - t);
+                        int baseA = (baseColor >>> 24) & 0xFF;
+                        int a = Math.max(18, (int) (baseA * fade));
+                        int rgb = baseColor & 0x00FFFFFF;
+                        int faded = (a << 24) | rgb;
+                        double radius = 0.2 + ageF * 0.32;
+                        double yOff = ring * 0.04;
+                        ring(builder, pose, wave.x, wave.y + yOff, wave.z, radius, 28, faded);
+                        ring(builder, pose, wave.x, wave.y + yOff + 0.06, wave.z, radius * 0.92, 20, faded);
+                    }
+                }
+            }
+
+            matrices.popPose();
+            pushed = false;
+
+            STAGED.upload();
+            StagedVertexBuffer.ExecuteInfo info = STAGED.getExecuteInfo(draw);
+            if (info != null) submit(mc, info, pipeline);
+            STAGED.endFrame();
+        } catch (Throwable t) {
+            if (pushed) {
+                try { matrices.popPose(); } catch (Throwable ignored) {}
+            }
+            long now = System.nanoTime();
+            if (now - lastRenderFailNs > 5_000_000_000L) {
+                lastRenderFailNs = now;
+                VoidClient.LOGGER.error("VoidWorldRenderer frame failed", t);
+            }
         }
-
-        matrices.popPose();
-
-        STAGED.upload();
-        StagedVertexBuffer.ExecuteInfo info = STAGED.getExecuteInfo(draw);
-        if (info != null) submit(mc, info, pipeline);
-        STAGED.endFrame();
     }
 
     private static double lerpX(AbstractClientPlayer e, float pt) {
