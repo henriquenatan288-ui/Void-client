@@ -13,6 +13,8 @@ import net.minecraft.world.phys.Vec3;
  * Partículas SEM ESTADO: posição = f(índice, tempo), dobrada numa caixa em volta da câmera.
  * Desenha pelo VoidDraw.Sink (box/line). Lógica derivada do "Visual Client Community" (c) 2026 Alatic, MIT.
  *
+ * Compatível com VoidDraw.Extractor de 3 argumentos (PR #7: extract(sink, mc, partialTick)).
+ *
  * Caminho: src/main/java/dev/voidclient/modules/visual/WorldFx.java
  */
 public class WorldFx extends Module {
@@ -34,9 +36,9 @@ public class WorldFx extends Module {
         VoidDraw.EXTRACTORS.add(this::extract);
     }
 
-    private void extract(VoidDraw.Sink sink, Minecraft mc) {
+    private void extract(VoidDraw.Sink sink, Minecraft mc, float partialTick) {
         if (!isEnabled() || mc.level == null || mc.player == null) return;
-        float pt = mc.getDeltaTracker().getGameTimeDeltaPartialTick(false);
+        float pt = partialTick;   // vem do VoidDraw (PR #7)
         double time = (mc.level.getGameTime() + pt) / 20.0;
         Vec3 cam = mc.gameRenderer.mainCamera().position();
         int n = count.getInt();
