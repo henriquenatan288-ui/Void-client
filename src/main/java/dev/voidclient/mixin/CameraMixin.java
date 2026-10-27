@@ -33,13 +33,18 @@ public abstract class CameraMixin {
         return pitch;
     }
 
+    /** Apply freecam pose after vanilla camera update (step is once-per-frame inside controller). */
     private void applyFreecamPos() {
         if (!FreecamController.isActive()) return;
-        CameraInvoker invoker = (CameraInvoker) (Object) this;
-        FreecamController.step(Minecraft.getInstance());
-        Vec3 p = FreecamController.pos();
-        invoker.voidclient$setPos(p);
-        invoker.voidclient$setRotation(FreecamController.yaw(), FreecamController.pitch());
+        try {
+            FreecamController.step(Minecraft.getInstance());
+            CameraInvoker invoker = (CameraInvoker) (Object) this;
+            Vec3 p = FreecamController.pos();
+            invoker.voidclient$setPos(p);
+            invoker.voidclient$setRotation(FreecamController.yaw(), FreecamController.pitch());
+        } catch (Throwable ignored) {
+            // Mapping / pipeline mismatch — leave vanilla camera
+        }
     }
 
     @Inject(method = UPDATE, at = @At("RETURN"), require = 0)
