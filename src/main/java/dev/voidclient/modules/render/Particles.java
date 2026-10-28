@@ -6,12 +6,14 @@ import dev.voidclient.core.setting.BooleanSetting;
 import dev.voidclient.core.setting.ColorSetting;
 import dev.voidclient.core.setting.ModeSetting;
 import dev.voidclient.core.setting.NumberSetting;
+import dev.voidclient.render.SmoothClock;
 import dev.voidclient.render.VoidDraw;
 import net.minecraft.client.Minecraft;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
 
+/** Particles: VoidDraw orbit symbols. SmoothClock = no 20Hz teleport. */
 public class Particles extends Module {
     private final ModeSetting style = addSetting(new ModeSetting(
             "Style", "Particle style", "Crown",
@@ -33,11 +35,13 @@ public class Particles extends Module {
 
     private void extract(VoidDraw.Sink sink, Minecraft mc, float pt) {
         if (!isEnabled() || mc.level == null || mc.player == null) return;
+        SmoothClock.frame(mc);
+        pt = SmoothClock.pt(pt);
         Player p = mc.player;
         double x = Mth.lerp(pt, p.xo, p.getX());
         double y = Mth.lerp(pt, p.yo, p.getY());
         double z = Mth.lerp(pt, p.zo, p.getZ());
-        double t = (mc.level.getGameTime() + pt) / 20.0;
+        double t = SmoothClock.seconds();
         double phase = t * 2.8 * speed.get();
         int n = amount.getInt();
         double r = distance.get(), sz = size.get();
