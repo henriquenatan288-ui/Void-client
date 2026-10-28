@@ -16,7 +16,9 @@
     "InputMixin",
     "PlayerOutlineMixin",
     "ClientWorldMixin",
-    "ItemStackFoilMixin"
+    "ItemStackFoilMixin",
+    "MinecraftMixin",
+    "GameRendererMixin"
   ],
   "injectors": {
     "defaultRequire": 1
