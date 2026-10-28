@@ -6,6 +6,7 @@ import dev.voidclient.core.setting.BooleanSetting;
 import dev.voidclient.core.setting.ColorSetting;
 import dev.voidclient.core.setting.ModeSetting;
 import dev.voidclient.core.setting.NumberSetting;
+import dev.voidclient.render.SmoothClock;
 import dev.voidclient.render.VoidDraw;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.phys.Vec3;
@@ -30,7 +31,8 @@ public class CustomSky extends Module {
 
     private void extract(VoidDraw.Sink s, Minecraft mc, float pt) {
         if (!isEnabled() || mc.level == null || mc.player == null) return;
-        double t = (mc.level.getGameTime() + pt) / 20.0 * speed.get();
+        SmoothClock.frame(mc);
+        double t = SmoothClock.seconds() * speed.get();
         Vec3 cam = mc.gameRenderer.mainCamera().position();
         double R = radius.get(), br = brightness.get();
         int ca = colorA.get() & 0xFFFFFF, cb = colorB.get() & 0xFFFFFF, n = density.getInt();
