@@ -3,9 +3,8 @@ package dev.voidclient.mixin;
 import dev.voidclient.freecam.FreecamController;
 import dev.voidclient.freelook.FreelookController;
 import net.minecraft.client.Camera;
+import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -15,12 +14,17 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
- * Detach camera when freecam is on (26.2 Mojang).
- * Writes pose at end of Camera.setup — that is the method the game actually calls
- * (Yarn "update" does not exist here; require=0 was hiding a dead inject).
+ * Freecam / Freelook for Minecraft 26.2 (Mojang).
+ *
+ * Camera no longer has setup(Level, Entity, ZZF). Pose is built in
+ * update(DeltaTracker) via alignWithEntity(partialTick). We run after that
+ * and overwrite position/rotation (same pattern as WI-Freecam 26.2).
  */
 @Mixin(Camera.class)
 public abstract class CameraMixin {
+
+    @Shadow
+    private boolean detached;
 
     @Shadow
     private Vec3 position;
@@ -37,32 +41,30 @@ public abstract class CameraMixin {
     @Shadow
     protected abstract void setPosition(double x, double y, double z);
 
-    /**
-     * Mojang 26.2: setup(Level, Entity, thirdPerson, inverseView, partialTick).
-     */
+    @Shadow
+    protected abstract void setPosition(Vec3 pos);
+
     @Inject(
-            method = "setup(Lnet/minecraft/world/level/Level;Lnet/minecraft/world/entity/Entity;ZZF)V",
-            at = @At("RETURN"))
-    private void voidclient$freecamAfterSetup(
-            Level level,
-            Entity focusedEntity,
-            boolean thirdPerson,
-            boolean inverseView,
-            float partialTick,
-            CallbackInfo ci) {
+            method = "update(Lnet/minecraft/client/DeltaTracker;)V",
+            at = @At(
+                    value = "INVOKE",
+                    target = "Lnet/minecraft/client/Camera;alignWithEntity(F)V",
+                    shift = At.Shift.AFTER))
+    private void voidclient$afterAlign(DeltaTracker deltaTracker, CallbackInfo ci) {
         if (!FreecamController.isActive()) return;
 
         Minecraft mc = Minecraft.getInstance();
         FreecamController.step(mc);
+
+        detached = true;
         Vec3 p = FreecamController.pos();
         float yaw = FreecamController.yaw();
         float pitch = FreecamController.pitch();
 
-        // Prefer setters; also write fields so a no-op setter still sticks
-        try {
-            this.setPosition(p.x, p.y, p.z);
-            this.setRotation(yaw, pitch);
-        } catch (Throwable ignored) {}
+        setPosition(p);
+        setRotation(yaw, pitch);
+
+        // belt-and-suspenders if setters are no-op for any reason
         this.position = p;
         this.yRot = yaw;
         this.xRot = pitch;
