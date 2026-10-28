@@ -4,6 +4,7 @@ import dev.voidclient.core.Category;
 import dev.voidclient.core.Module;
 import dev.voidclient.core.setting.BooleanSetting;
 import dev.voidclient.core.setting.NumberSetting;
+import dev.voidclient.render.SmoothClock;
 import dev.voidclient.render.VoidDraw;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.phys.Vec3;
@@ -29,7 +30,8 @@ public class WorldFx extends Module {
 
     private void extract(VoidDraw.Sink sink, Minecraft mc, float pt) {
         if (!isEnabled() || mc.level == null || mc.player == null) return;
-        double time = (mc.level.getGameTime() + pt) / 20.0;
+        SmoothClock.frame(mc);
+        double time = SmoothClock.seconds();
         Vec3 cam = mc.gameRenderer.mainCamera().position();
         int n = count.getInt();
         double wx = Math.cos(Math.toRadians(windAngle.get()));
