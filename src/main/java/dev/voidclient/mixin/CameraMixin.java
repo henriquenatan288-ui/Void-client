@@ -15,10 +15,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
  * Freecam / Freelook for Minecraft 26.2 (Mojang).
- *
- * Camera no longer has setup(Level, Entity, ZZF). Pose is built in
- * update(DeltaTracker) via alignWithEntity(partialTick). We run after that
- * and overwrite position/rotation (same pattern as WI-Freecam 26.2).
+ * After alignWithEntity, overwrite pose for freecam or freelook.
  */
 @Mixin(Camera.class)
 public abstract class CameraMixin {
@@ -51,23 +48,34 @@ public abstract class CameraMixin {
                     target = "Lnet/minecraft/client/Camera;alignWithEntity(F)V",
                     shift = At.Shift.AFTER))
     private void voidclient$afterAlign(DeltaTracker deltaTracker, CallbackInfo ci) {
-        if (!FreecamController.isActive()) return;
+        if (FreecamController.isActive()) {
+            Minecraft mc = Minecraft.getInstance();
+            FreecamController.step(mc);
 
-        Minecraft mc = Minecraft.getInstance();
-        FreecamController.step(mc);
+            detached = true;
+            Vec3 p = FreecamController.pos();
+            float yaw = FreecamController.yaw();
+            float pitch = FreecamController.pitch();
 
-        detached = true;
-        Vec3 p = FreecamController.pos();
-        float yaw = FreecamController.yaw();
-        float pitch = FreecamController.pitch();
+            setPosition(p);
+            setRotation(yaw, pitch);
+            this.position = p;
+            this.yRot = yaw;
+            this.xRot = pitch;
+            return;
+        }
 
-        setPosition(p);
-        setRotation(yaw, pitch);
-
-        // belt-and-suspenders if setters are no-op for any reason
-        this.position = p;
-        this.yRot = yaw;
-        this.xRot = pitch;
+        // Freelook: keep player body, only redirect camera look
+        if (FreelookController.isActive()) {
+            float yaw = FreelookController.yaw();
+            float pitch = FreelookController.pitch();
+            setRotation(yaw, pitch);
+            this.yRot = yaw;
+            this.xRot = pitch;
+            if (FreelookController.shouldPassThrough()) {
+                detached = true;
+            }
+        }
     }
 
     @Inject(method = "isDetached()Z", at = @At("HEAD"), cancellable = true)
