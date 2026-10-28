@@ -6,6 +6,8 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Freecam — independent pos/yaw/pitch. Input drives this, not the player.
@@ -13,6 +15,8 @@ import net.minecraft.world.phys.Vec3;
  */
 public final class FreecamController {
     private FreecamController() {}
+
+    private static final Logger LOG = LoggerFactory.getLogger("VoidClient/Freecam");
 
     public static double baseSpeed = 20.0;
     public static double sprintMult = 3.0;
@@ -35,6 +39,7 @@ public final class FreecamController {
     private static float lockedYaw, lockedPitch;
     private static boolean bodyLocked;
     private static double boost = 1.0;
+    private static long lastGuiLogNs;
 
     public static boolean isActive() { return active; }
     public static boolean blocksInteraction() { return active && blockInteractions; }
@@ -70,9 +75,11 @@ public final class FreecamController {
         owner = p;
         lastStepNs = System.nanoTime();
         active = true;
+        LOG.info("Freecam enabled at {},{},{}", x, y, z);
     }
 
     public static void stop() {
+        if (active) LOG.info("Freecam disabled");
         active = false;
         owner = null;
         bodyLocked = false;
@@ -96,15 +103,14 @@ public final class FreecamController {
         step(mc);
     }
 
+    /**
+     * Mouse/touch look. Vanilla already applied sensitivity before Entity.turn,
+     * so only the 0.15 scale remains (do not multiply options.sensitivity again).
+     */
     public static void look(double dx, double dy) {
         if (!active) return;
-        float sens = 0.15f;
-        try {
-            double s = Minecraft.getInstance().options.sensitivity().get();
-            sens = (float) (0.15 * (s * 0.6 + 0.2));
-        } catch (Throwable ignored) {}
-        targetYaw += (float) dx * sens;
-        targetPitch = Mth.clamp(targetPitch + (float) dy * sens, -90f, 90f);
+        targetYaw += (float) dx * 0.15f;
+        targetPitch = Mth.clamp(targetPitch + (float) dy * 0.15f, -90f, 90f);
         targetYaw = wrap(targetYaw);
     }
 
@@ -140,13 +146,23 @@ public final class FreecamController {
             viewPitch = targetPitch;
         }
 
+        // Only hard-pause GUIs block movement. Mobile overlays often leave screen != null
+        // without being a real menu — that used to freeze freecam with no feedback.
         boolean guiBlocks = false;
-        try { guiBlocks = mc.gui != null && mc.gui.screen() != null; } catch (Throwable ignored) {}
+        try {
+            var screen = mc.gui != null ? mc.gui.screen() : null;
+            guiBlocks = screen != null && screen.isPauseScreen();
+            if (guiBlocks && now - lastGuiLogNs > 3_000_000_000L) {
+                lastGuiLogNs = now;
+                LOG.info("Freecam keys paused (pause screen open: {})", screen.getClass().getSimpleName());
+            }
+        } catch (Throwable ignored) {}
 
         double f = 0, r = 0, u = 0;
         if (!guiBlocks) {
             f = axis(mc.options.keyUp, mc.options.keyDown);
-            r = axis(mc.options.keyRight, mc.options.keyLeft);
+            // Right vector is (cos yaw, sin yaw) = LEFT in MC; invert axis so keyRight strafes right
+            r = axis(mc.options.keyLeft, mc.options.keyRight);
             u = verticalLock ? 0.0 : axis(mc.options.keyJump, mc.options.keyShift);
         }
 
