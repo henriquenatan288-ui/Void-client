@@ -7,7 +7,10 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
-/** Freecam v2 — once per frame; smooth look; sprint ramp; optional collision. */
+/**
+ * Freecam — independent pos/yaw/pitch. Input drives this, not the player.
+ * CameraMixin applies pose every render frame after Camera.setup.
+ */
 public final class FreecamController {
     private FreecamController() {}
 
@@ -42,13 +45,26 @@ public final class FreecamController {
     public static void start(Minecraft mc) {
         LocalPlayer p = mc.player;
         if (active || p == null || mc.level == null) return;
+
+        float startYaw = p.getYRot();
+        float startPitch = p.getXRot();
         Vec3 eye = p.getEyePosition();
-        x = eye.x; y = eye.y; z = eye.z;
+
+        // Nudge slightly behind the look vector so you are not stuck inside the face
+        double yr = Math.toRadians(startYaw);
+        double pr = Math.toRadians(startPitch);
+        double bx = Math.sin(yr) * Math.cos(pr);
+        double by = Math.sin(pr);
+        double bz = -Math.cos(yr) * Math.cos(pr);
+        x = eye.x + bx * 0.35;
+        y = eye.y + by * 0.35;
+        z = eye.z + bz * 0.35;
+
         vx = vy = vz = 0;
-        targetYaw = viewYaw = p.getYRot();
-        targetPitch = viewPitch = p.getXRot();
-        lockedYaw = targetYaw;
-        lockedPitch = targetPitch;
+        targetYaw = viewYaw = startYaw;
+        targetPitch = viewPitch = startPitch;
+        lockedYaw = startYaw;
+        lockedPitch = startPitch;
         bodyLocked = true;
         boost = 1.0;
         owner = p;
@@ -64,6 +80,7 @@ public final class FreecamController {
         boost = 1.0;
     }
 
+    /** Tick: validity + touch look. Movement can also step here as backup. */
     public static void tick(Minecraft mc) {
         if (!active) return;
         LocalPlayer p = mc.player;
@@ -75,6 +92,8 @@ public final class FreecamController {
             return;
         }
         captureTouchLook(p);
+        // Backup integration if Camera.setup did not run this frame (mobile / odd paths)
+        step(mc);
     }
 
     public static void look(double dx, double dy) {
@@ -102,6 +121,7 @@ public final class FreecamController {
         p.setYHeadRot(lockedYaw);
     }
 
+    /** Integrate once per call site frame; skips if dt is tiny (double call). */
     public static void step(Minecraft mc) {
         if (!active) return;
 
